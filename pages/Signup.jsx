@@ -18,6 +18,7 @@ import { login as loginRequest, signup as signupRequest, verifyStatus } from '..
 import { useAuth } from '../context/AuthContext.jsx';
 
 export default function Signup() {
+  console.log('SIGNUP COMPONENT RENDER');
   const navigate = useNavigate();
   const { login } = useAuth();
   const [error, setError] = useState('');
