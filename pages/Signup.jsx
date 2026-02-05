@@ -44,6 +44,7 @@ export default function Signup() {
   }, []);
 
   const handleSubmit = (event) => {
+    console.log('HANDLE SUBMIT RUNNING');
     event.preventDefault();
     if (submitting) return;
     setError('');
