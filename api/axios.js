@@ -37,5 +37,12 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
-
+api.interceptors.request.use((config) => {
+  console.log(
+    'AXIOS REQUEST =>',
+    config.method?.toUpperCase(),
+    config.baseURL + config.url
+  );
+  return config;
+});
 export default api;
