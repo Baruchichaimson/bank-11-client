@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import {
   Box,
@@ -14,45 +14,31 @@ import {
   TextField,
   Typography
 } from '@mui/material';
-import { login as loginRequest, signup as signupRequest, verifyStatus } from '../api/auth.api.js';
-import { useAuth } from '../context/AuthContext.jsx';
+import { signup as signupRequest } from '../api/auth.api.js';
 
 export default function Signup() {
-  console.log('SIGNUP COMPONENT RENDER');
   const navigate = useNavigate();
-  const { login } = useAuth();
   const [error, setError] = useState('');
   const [fieldErrors, setFieldErrors] = useState({});
   const [sentOpen, setSentOpen] = useState(false);
   const [submitting, setSubmitting] = useState(false);
-  const [verifyOpen, setVerifyOpen] = useState(false);
-  const [verifyMessage, setVerifyMessage] = useState('');
-  const pendingEmailRef = useRef('');
-  const pendingPasswordRef = useRef('');
-  const pollRef = useRef(null);
 
-  const normalizePhone = (value) => (value ? value.replace(/[^\d]/g, '') : '');
+  const normalizePhone = (value) =>
+    value ? value.replace(/[^\d]/g, '') : '';
 
-  const stopPolling = () => {
-    if (pollRef.current) {
-      clearInterval(pollRef.current);
-      pollRef.current = null;
-    }
-  };
 
-  useEffect(() => {
-    return () => stopPolling();
-  }, []);
+
 
   const handleSubmit = (event) => {
-    console.log('HANDLE SUBMIT RUNNING');
     event.preventDefault();
     if (submitting) return;
+
     setError('');
     setFieldErrors({});
     setSubmitting(true);
 
     const formData = new FormData(event.currentTarget);
+
     const payload = {
       firstName: formData.get('firstName')?.trim(),
       lastName: formData.get('lastName')?.trim(),
@@ -60,10 +46,12 @@ export default function Signup() {
       phoneNumber: normalizePhone(formData.get('phoneNumber')),
       password: formData.get('password') || ''
     };
+
     const confirmPassword = formData.get('confirmPassword') || '';
     const city = formData.get('city')?.trim();
 
     const nextErrors = {};
+
     if (!payload.firstName || payload.firstName.length < 2) {
       nextErrors.firstName = 'First name is not valid.';
     }
@@ -83,89 +71,34 @@ export default function Signup() {
     if (!confirmPassword) {
       nextErrors.confirmPassword = 'Please confirm your password.';
     }
+    if (payload.password && confirmPassword && payload.password !== confirmPassword) {
+      nextErrors.confirmPassword = 'Passwords do not match.';
+    }
     if (!city) {
       nextErrors.city = 'City is required.';
     }
 
-    if (payload.password && confirmPassword && payload.password !== confirmPassword) {
-      nextErrors.confirmPassword = 'Passwords do not match.';
-    }
-
     if (Object.keys(nextErrors).length > 0) {
       setFieldErrors(nextErrors);
+      setSubmitting(false);
       return;
     }
 
     signupRequest(payload)
       .then(() => {
-        setSentOpen(true);
-        setError('');
+        setError('');          
         setFieldErrors({});
-        pendingEmailRef.current = payload.email || '';
-        pendingPasswordRef.current = payload.password || '';
+        setSentOpen(true);
         event.currentTarget.reset();
       })
+
       .catch((err) => {
-        const message = err.response?.data?.message || 'Signup failed';
-        if (message === 'Email already registered') {
-          setFieldErrors({ email: 'User already registered.' });
-          return;
-        }
-        if (message === 'Invalid phone number format') {
-          setFieldErrors({
-            phoneNumber: 'Phone number must start with 05 and contain 10 digits.'
-          });
-          return;
-        }
-        if (message === 'Invalid email format') {
-          setFieldErrors({ email: 'Email is not valid.' });
-          return;
-        }
-        setError(message);
+        setError(err.response?.data?.message || 'Signup נכשל');
       })
       .finally(() => {
         setSubmitting(false);
       });
   };
-
-  useEffect(() => {
-    if (!sentOpen || !pendingEmailRef.current) return;
-    if (pollRef.current) return;
-
-    pollRef.current = setInterval(() => {
-      verifyStatus(pendingEmailRef.current)
-        .then((response) => {
-          if (!response.data?.isVerified) return;
-          stopPolling();
-          setSentOpen(false);
-          setVerifyMessage('המשתמש אומת בהצלחה.');
-          setVerifyOpen(true);
-
-          const email = pendingEmailRef.current;
-          const password = pendingPasswordRef.current;
-          if (!email || !password) return;
-
-          loginRequest({ email, password })
-            .then((loginResponse) => {
-              login({
-                email,
-                accessToken: loginResponse.data.accessToken
-              });
-              setTimeout(() => {
-                navigate('/dashboard');
-              }, 700);
-            })
-            .catch(() => {
-              setVerifyMessage(
-                'המשתמש אומת. אנא התחבר/י עם המייל והסיסמה.'
-              );
-            });
-        })
-        .catch(() => {});
-    }, 2500);
-
-    return () => stopPolling();
-  }, [login, navigate, sentOpen]);
 
   return (
     <Box sx={{ py: { xs: 6, md: 10 } }}>
@@ -180,12 +113,12 @@ export default function Signup() {
           <Typography color="text.secondary" sx={{ mb: 4 }}>
             Create access to your digital banking experience in under 3 minutes.
           </Typography>
+
           <Box component="form" onSubmit={handleSubmit}>
             <Grid container spacing={3}>
               <Grid item xs={12} md={6}>
                 <TextField
                   label="First name"
-                  placeholder="Noa"
                   name="firstName"
                   fullWidth
                   required
@@ -193,10 +126,10 @@ export default function Signup() {
                   helperText={fieldErrors.firstName}
                 />
               </Grid>
+
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Last name"
-                  placeholder="Levi"
                   name="lastName"
                   fullWidth
                   required
@@ -204,11 +137,11 @@ export default function Signup() {
                   helperText={fieldErrors.lastName}
                 />
               </Grid>
+
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Email"
                   type="email"
-                  placeholder="mail@example.com"
                   name="email"
                   fullWidth
                   required
@@ -216,10 +149,10 @@ export default function Signup() {
                   helperText={fieldErrors.email}
                 />
               </Grid>
+
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Phone"
-                  placeholder="0500000000"
                   name="phoneNumber"
                   fullWidth
                   required
@@ -227,6 +160,7 @@ export default function Signup() {
                   helperText={fieldErrors.phoneNumber}
                 />
               </Grid>
+
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Password"
@@ -238,6 +172,7 @@ export default function Signup() {
                   helperText={fieldErrors.password}
                 />
               </Grid>
+
               <Grid item xs={12} md={6}>
                 <TextField
                   label="Confirm password"
@@ -249,10 +184,10 @@ export default function Signup() {
                   helperText={fieldErrors.confirmPassword}
                 />
               </Grid>
+
               <Grid item xs={12}>
                 <TextField
                   label="City"
-                  placeholder="Tel Aviv"
                   name="city"
                   fullWidth
                   required
@@ -261,11 +196,16 @@ export default function Signup() {
                 />
               </Grid>
             </Grid>
-            {error ? (
+
+            {error && !sentOpen && (
               <Alert severity="error" sx={{ mt: 3 }}>
                 {error}
               </Alert>
-            ) : null}
+            )}
+
+
+
+
             <Button
               type="submit"
               variant="contained"
@@ -275,36 +215,44 @@ export default function Signup() {
             >
               {submitting ? 'Creating...' : 'Create account'}
             </Button>
+
             <Typography sx={{ mt: 3 }} color="text.secondary">
               Already have access? <Link to="/login">Sign in</Link>
             </Typography>
           </Box>
         </Paper>
       </Container>
-      <Dialog open={sentOpen} onClose={() => setSentOpen(false)}>
+
+      <Dialog
+        open={sentOpen}
+        onClose={() => {
+          setSentOpen(false);
+          setError('');        
+          setFieldErrors({});
+        }}
+      >
         <DialogTitle>Verification email sent</DialogTitle>
         <DialogContent>
           <Typography color="text.secondary">
-            We sent a verification link to your email. Please open it to activate
-            your account.
-          </Typography>
-          <Typography color="text.secondary" sx={{ mt: 2 }}>
-            Waiting for verification...
+            We sent a verification link to your email.
+            Please open it to activate your account and get sign in again.
           </Typography>
         </DialogContent>
         <DialogActions>
-          <Button onClick={() => setSentOpen(false)}>Got it</Button>
+          <Button
+            onClick={() => {
+              setSentOpen(false);
+              setError('');    
+              setFieldErrors({});
+              navigate('/login');
+
+            }}
+          >
+            Got it
+          </Button>
         </DialogActions>
       </Dialog>
-      <Dialog open={verifyOpen} onClose={() => setVerifyOpen(false)}>
-        <DialogTitle>Success</DialogTitle>
-        <DialogContent>
-          <Typography color="text.secondary">{verifyMessage}</Typography>
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={() => setVerifyOpen(false)}>Continue</Button>
-        </DialogActions>
-      </Dialog>
+
     </Box>
   );
 }

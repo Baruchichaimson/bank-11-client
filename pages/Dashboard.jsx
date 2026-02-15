@@ -14,23 +14,40 @@ import {
   Typography
 } from '@mui/material';
 import ArrowOutwardIcon from '@mui/icons-material/ArrowOutward';
+import { jwtDecode } from 'jwt-decode';
 import AddCardIcon from '@mui/icons-material/AddCard';
 import SavingsIcon from '@mui/icons-material/Savings';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getTransactionById } from '../api/transactions.api.js';
+import { getSentTransactionByRecipientName } from '../api/transactions.api.js';
 import { useAuth } from '../context/AuthContext.jsx';
+import BankAssistantChat from '../components/BankAssistantChat.jsx';
 
 export default function Dashboard() {
+  console.log('DASHBOARD RENDER');
+
   const { account, transactions, loading, logout, token } = useAuth();
   const navigate = useNavigate();
   const [historyOpen, setHistoryOpen] = useState(false);
   const [lookupOpen, setLookupOpen] = useState(false);
-  const [lookupId, setLookupId] = useState('');
+  const [lookupRecipientName, setLookupRecipientName] = useState('');
   const [lookupResult, setLookupResult] = useState(null);
   const [lookupError, setLookupError] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
+  const [firstName, setFirstName] = useState('');
+
+  useEffect(() => {
+    console.log('DASHBOARD TOKEN:', token);
+    if (!token) return;
+
+    try {
+      const decoded = jwtDecode(token);
+      setFirstName(decoded.firstName || '');
+    } catch (err) {
+      console.error('Invalid token', err);
+    }
+  }, [token]);
 
   const getUserEmail = (jwt) => {
     if (!jwt) return null;
@@ -71,7 +88,7 @@ export default function Dashboard() {
   }
 
   return (
-    <Box sx={{ py: { xs: 6, md: 8 } }}>
+    <Box id="dashboard-root" sx={{ py: { xs: 6, md: 8 } }}>
       <Container maxWidth="lg">
         {/* ===== Header ===== */}
         <Stack
@@ -86,7 +103,7 @@ export default function Dashboard() {
               Dashboard
             </Typography>
             <Typography variant="h4" sx={{ fontWeight: 600 }}>
-              Welcome back 
+              Welcome back{firstName ? ` ${firstName}` : ''} 
             </Typography>
             <Typography color="text.secondary">
               Here is your financial overview for today.
@@ -183,20 +200,20 @@ export default function Dashboard() {
                   >
                     View all
                   </Button>
-                  <Button
-                    variant="text"
-                    size="small"
-                    onClick={() => {
-                      setLookupId('');
-                      setLookupResult(null);
-                      setLookupError('');
-                      setLookupOpen(true);
-                    }}
-                  >
-                    Find by ID
-                  </Button>
+                    <Button
+                      variant="text"
+                      size="small"
+                      onClick={() => {
+                        setLookupRecipientName('');
+                        setLookupResult(null);
+                        setLookupError('');
+                        setLookupOpen(true);
+                      }}
+                    >
+                      Find by name
+                    </Button>
+                  </Stack>
                 </Stack>
-              </Stack>
 
               {transactions.length === 0 ? (
                 <Typography color="text.secondary">
@@ -215,7 +232,10 @@ export default function Dashboard() {
                       alignItems="center"
                     >
                       <Box>
-                        <Typography sx={{ fontWeight: 500 }}>
+                        <Typography sx={{ fontWeight: 800 }}>
+                          {tx.fromEmail ? tx.fromEmail.split('@')[0] : 'email'}
+                        </Typography>
+                        <Typography variant="body2" color="text.secondary" sx={{ fontWeight: 600 }}>
                           {tx.description || 'Transfer'}
                         </Typography>
                         <Typography variant="body2" color="text.secondary">
@@ -335,14 +355,14 @@ export default function Dashboard() {
         fullWidth
         maxWidth="xs"
       >
-        <DialogTitle>Find transfer by ID</DialogTitle>
+        <DialogTitle>Find sent transfer by name</DialogTitle>
         <DialogContent dividers>
           <Stack spacing={2}>
             <TextField
-              label="Transfer ID"
-              value={lookupId}
+              label="Recipient name (before @)"
+              value={lookupRecipientName}
               onChange={(e) => {
-                setLookupId(e.target.value);
+                setLookupRecipientName(e.target.value);
                 setLookupError('');
                 setLookupResult(null);
               }}
@@ -352,9 +372,9 @@ export default function Dashboard() {
             <Button
               variant="contained"
               onClick={async () => {
-                const id = lookupId.trim();
-                if (!id) {
-                  setLookupError('Please enter a transfer ID.');
+                const recipientName = lookupRecipientName.trim();
+                if (!recipientName) {
+                  setLookupError('Please enter a recipient name.');
                   setLookupResult(null);
                   return;
                 }
@@ -364,7 +384,7 @@ export default function Dashboard() {
                   setLookupError('');
                   setLookupResult(null);
 
-                  const res = await getTransactionById(id);
+                  const res = await getSentTransactionByRecipientName(recipientName);
                   const tx =
                     res?.data?.transaction ||
                     res?.data?.data?.transaction ||
@@ -372,7 +392,7 @@ export default function Dashboard() {
                     res?.data;
 
                   if (!tx || (Array.isArray(tx) && tx.length === 0)) {
-                    setLookupError('No transfer found with this ID.');
+                    setLookupError('No sent transfer found for this recipient name.');
                     return;
                   }
 
@@ -380,7 +400,7 @@ export default function Dashboard() {
                 } catch (err) {
                   setLookupError(
                     err.response?.data?.message ||
-                      'No transfer found with this ID.'
+                      'No sent transfer found for this recipient name.'
                   );
                 } finally {
                   setLookupLoading(false);
@@ -445,6 +465,8 @@ export default function Dashboard() {
           <Button onClick={() => setLookupOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>
+
+      <BankAssistantChat token={token} />
     </Box>
   );
 }

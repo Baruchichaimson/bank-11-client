@@ -12,6 +12,7 @@ import { clearJwt, getJwt, setJwt } from '../utils/authStorage.js';
 const AuthContext = createContext(null);
 
 const INACTIVITY_LIMIT = 2 * 60 * 1000; 
+const DASHBOARD_PATH = '/dashboard';
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getJwt());
@@ -66,6 +67,21 @@ export function AuthProvider({ children }) {
     }, INACTIVITY_LIMIT);
   };
 
+  const isDashboardAreaEvent = (eventTarget) => {
+    if (!(eventTarget instanceof Element)) return false;
+    const dashboardRoot = document.getElementById('dashboard-root');
+    return Boolean(dashboardRoot && dashboardRoot.contains(eventTarget));
+  };
+
+  const shouldResetInactivity = (event) => {
+    if (window.location.pathname !== DASHBOARD_PATH) {
+      return false;
+    }
+
+    const target = event?.target;
+    return isDashboardAreaEvent(target);
+  };
+
   /* ================= TOKEN EFFECT ================= */
   useEffect(() => {
     if (token) {
@@ -79,17 +95,30 @@ export function AuthProvider({ children }) {
   useEffect(() => {
     if (!token) return;
 
-    const events = ['mousemove', 'keydown', 'click', 'scroll'];
+    const events = [
+      'mousemove',
+      'keydown',
+      'click',
+      'scroll',
+      'touchstart'
+    ];
+    const handleActivity = (event) => {
+      if (shouldResetInactivity(event)) {
+        resetInactivityTimer();
+      }
+    };
 
     events.forEach((event) =>
-      window.addEventListener(event, resetInactivityTimer)
+      window.addEventListener(event, handleActivity, { passive: true })
     );
 
-    resetInactivityTimer();
+    if (window.location.pathname === DASHBOARD_PATH) {
+      resetInactivityTimer();
+    }
 
     return () => {
       events.forEach((event) =>
-        window.removeEventListener(event, resetInactivityTimer)
+        window.removeEventListener(event, handleActivity)
       );
 
       if (inactivityTimerRef.current) {

@@ -2,7 +2,7 @@ import axios from 'axios';
 import { getJwt, clearJwt } from '../utils/authStorage.js';
 
 const api = axios.create({
-  baseURL: `${import.meta.env.VITE_API_URL}/api/v1`
+  baseURL: `https://bank-11-cd9u.onrender.com/api/v1`
 });
 
 const AUTH_EXEMPT_PATHS = [
