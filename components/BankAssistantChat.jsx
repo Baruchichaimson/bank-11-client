@@ -9,18 +9,21 @@ import {
   TextField,
   Typography
 } from '@mui/material';
+import { alpha, useTheme } from '@mui/material/styles';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import { createAssistantSocket } from '../api/socket.js';
 
 export default function BankAssistantChat({ token }) {
+  const theme = useTheme();
+  const isDarkMode = theme.palette.mode === 'dark';
   const [open, setOpen] = useState(false);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [messages, setMessages] = useState([
     {
       role: 'assistant',
-      text: 'היי, אני העוזר הבנקאי שלך. אפשר לשאול על יתרה, העברה אחרונה ומספר העברות.'
+      text: 'Hi, I am your banking assistant. You can ask about your balance, your latest transfer, and transfer counts.'
     }
   ]);
   const [error, setError] = useState('');
@@ -34,7 +37,7 @@ export default function BankAssistantChat({ token }) {
     socketRef.current = socket;
 
     socket.on('connect_error', () => {
-      setError('חיבור הצ׳אט נכשל. בדוק טוקן או הגדרות שרת.');
+      setError('Chat connection failed. Please check your token and server configuration.');
       setIsLoading(false);
     });
 
@@ -47,7 +50,7 @@ export default function BankAssistantChat({ token }) {
     });
 
     socket.on('chat_error', (payload) => {
-      setError(payload?.message || 'שגיאה בצ׳אט.');
+      setError(payload?.message || 'Chat error.');
       setIsLoading(false);
     });
 
@@ -65,6 +68,33 @@ export default function BankAssistantChat({ token }) {
   const disabled = useMemo(
     () => !socketRef.current || isLoading || !input.trim(),
     [isLoading, input]
+  );
+  const chatPalette = useMemo(
+    () =>
+      isDarkMode
+        ? {
+            paperBg: '#111827',
+            border: 'rgba(56, 189, 248, 0.55)',
+            messagesBg: 'rgba(15, 23, 42, 0.45)',
+            userBubbleBg: '#1d4ed8',
+            assistantBubbleBg: '#0f172a',
+            bubbleText: '#f8fafc',
+            inputText: '#e2e8f0',
+            placeholder: '#94a3b8',
+            actionBorder: 'rgba(56, 189, 248, 0.65)'
+          }
+        : {
+            paperBg: '#dbeafe',
+            border: 'rgba(37, 99, 235, 0.35)',
+            messagesBg: '#f8fafc',
+            userBubbleBg: '#2563eb',
+            assistantBubbleBg: '#ffffff',
+            bubbleText: '#0f172a',
+            inputText: '#0f172a',
+            placeholder: '#64748b',
+            actionBorder: 'rgba(37, 99, 235, 0.55)'
+          },
+    [isDarkMode]
   );
 
   const sendMessage = () => {
@@ -96,10 +126,35 @@ export default function BankAssistantChat({ token }) {
           Bank Assistant
         </Button>
       ) : (
-        <Paper sx={{ width: 360, height: 520, p: 1.5 }}>
-          <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 1 }}>
-            <Typography sx={{ fontWeight: 700 }}>Bank Assistant</Typography>
-            <IconButton size="small" onClick={() => setOpen(false)}>
+        <Paper
+          sx={{
+            width: 360,
+            height: 520,
+            p: 1.5,
+            bgcolor: chatPalette.paperBg,
+            border: `1.5px solid ${chatPalette.border}`,
+            boxShadow: isDarkMode
+              ? '0 10px 28px rgba(2, 6, 23, 0.35)'
+              : '0 10px 28px rgba(15, 23, 42, 0.12)'
+          }}
+        >
+          <Stack
+            direction="row"
+            alignItems="center"
+            justifyContent="space-between"
+            sx={{
+              mb: 1,
+              mx: -1.5,
+              mt: -1.5,
+              px: 1.5,
+              py: 1,
+              borderTopLeftRadius: 'inherit',
+              borderTopRightRadius: 'inherit',
+              background: 'linear-gradient(90deg, #2563eb 0%, #0ea5e9 100%)'
+            }}
+          >
+            <Typography sx={{ fontWeight: 700, color: '#f8fafc' }}>Bank Assistant</Typography>
+            <IconButton size="small" onClick={() => setOpen(false)} sx={{ color: '#f8fafc' }}>
               <CloseIcon fontSize="small" />
             </IconButton>
           </Stack>
@@ -109,7 +164,8 @@ export default function BankAssistantChat({ token }) {
             sx={{
               height: 390,
               overflowY: 'auto',
-              border: '1px solid #e2e8f0',
+              border: `1px solid ${chatPalette.border}`,
+              bgcolor: chatPalette.messagesBg,
               borderRadius: 1,
               p: 1
             }}
@@ -121,19 +177,37 @@ export default function BankAssistantChat({ token }) {
                   sx={{
                     alignSelf: message.role === 'user' ? 'flex-end' : 'flex-start',
                     maxWidth: '88%',
-                    bgcolor: message.role === 'user' ? '#dbeafe' : '#f1f5f9',
+                    bgcolor:
+                      message.role === 'user'
+                        ? chatPalette.userBubbleBg
+                        : chatPalette.assistantBubbleBg,
+                    border:
+                      message.role === 'assistant' && !isDarkMode
+                        ? `1px solid ${alpha('#0f172a', 0.1)}`
+                        : 'none',
                     px: 1.2,
                     py: 0.8,
                     borderRadius: 1
                   }}
                 >
-                  <Typography variant="body2">{message.text}</Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      color:
+                        message.role === 'user' && !isDarkMode
+                          ? '#f8fafc'
+                          : chatPalette.bubbleText,
+                      wordBreak: 'break-word'
+                    }}
+                  >
+                    {message.text}
+                  </Typography>
                 </Box>
               ))}
               {isLoading ? (
                 <Stack direction="row" spacing={1} alignItems="center">
                   <CircularProgress size={14} />
-                  <Typography variant="caption">כותב תשובה...</Typography>
+                  <Typography variant="caption">Writing a reply...</Typography>
                 </Stack>
               ) : null}
             </Stack>
@@ -149,9 +223,30 @@ export default function BankAssistantChat({ token }) {
             <TextField
               size="small"
               fullWidth
-              placeholder="לדוגמה: מה היתרה שלי?"
+              placeholder="For example: What is my balance?"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              sx={{
+                '& .MuiOutlinedInput-root': {
+                  bgcolor: isDarkMode ? alpha('#0f172a', 0.45) : '#ffffff',
+                  borderRadius: 1.8,
+                  '& fieldset': {
+                    borderColor: chatPalette.actionBorder,
+                    borderWidth: 1.5
+                  },
+                  '&:hover fieldset': {
+                    borderColor: '#2563eb'
+                  },
+                  '&.Mui-focused fieldset': {
+                    borderColor: '#0ea5e9'
+                  }
+                },
+                '& .MuiInputBase-input': { color: chatPalette.inputText },
+                '& .MuiInputBase-input::placeholder': {
+                  color: chatPalette.placeholder,
+                  opacity: 1
+                }
+              }}
               onKeyDown={(e) => {
                 if (e.key === 'Enter') {
                   e.preventDefault();
@@ -159,8 +254,20 @@ export default function BankAssistantChat({ token }) {
                 }
               }}
             />
-            <Button variant="contained" onClick={sendMessage} disabled={disabled}>
-              שלח
+            <Button
+              variant="contained"
+              onClick={sendMessage}
+              disabled={disabled}
+              sx={{
+                border: '1.5px solid',
+                borderColor: chatPalette.actionBorder,
+                bgcolor: '#2563eb',
+                '&:hover': {
+                  bgcolor: '#1d4ed8'
+                }
+              }}
+            >
+              Send
             </Button>
           </Stack>
         </Paper>

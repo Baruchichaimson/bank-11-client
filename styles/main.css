@@ -17,6 +17,7 @@
   --app-bg: #f1f5f9;
   --topbar-gradient: linear-gradient(90deg, #2563eb 0%, #3b82f6 55%, #0ea5e9 100%);
   --topbar-text: #f8fafc;
+  --brand-title-color: #1d4ed8;
 }
 
 * {
@@ -42,6 +43,7 @@ body {
   --app-bg: #0b1220;
   --topbar-gradient: linear-gradient(90deg, #0b1220 0%, #0f172a 50%, #111827 100%);
   --topbar-text: #e2e8f0;
+  --brand-title-color: #38bdf8;
 }
 
 a {
@@ -57,7 +59,7 @@ a {
 .app-topbar {
   background: var(--topbar-gradient);
   color: var(--topbar-text);
-  padding: 18px 0;
+  padding: 10px 0;
   box-shadow: 0 8px 20px rgba(15, 23, 42, 0.16);
   position: relative;
   overflow: hidden;
@@ -82,26 +84,170 @@ a {
   gap: 16px;
 }
 
+.app-topbar__inner {
+  width: 100%;
+  margin: 0;
+  padding-left: 0;
+  padding-right: 12px;
+  min-height: 96px;
+  position: relative;
+  justify-content: center;
+}
+
+.app-topbar__inner::before {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(1800px, 100vw);
+  height: 180px;
+  background:
+    radial-gradient(ellipse at center, rgba(56, 189, 248, 0.32) 0%, rgba(56, 189, 248, 0.16) 28%, rgba(56, 189, 248, 0.08) 42%, transparent 72%),
+    linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.18) 22%, rgba(125, 211, 252, 0.34) 50%, rgba(56, 189, 248, 0.18) 78%, transparent 100%);
+  filter: blur(16px);
+  opacity: 0.9;
+  pointer-events: none;
+  z-index: 0;
+  animation: topbarAuraPulse 5.5s ease-in-out infinite;
+}
+
+.app-topbar__inner::after {
+  content: '';
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%);
+  width: min(2200px, 120vw);
+  height: 112px;
+  background: linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.08) 18%, rgba(125, 211, 252, 0.28) 50%, rgba(56, 189, 248, 0.08) 82%, transparent 100%);
+  opacity: 0.7;
+  pointer-events: none;
+  z-index: 0;
+  animation: topbarAuraSweep 7s ease-in-out infinite;
+}
+
 .app-brand {
+  position: relative;
   display: inline-flex;
   align-items: center;
-  gap: 84px;
-  font-weight: 600;
-  letter-spacing: 0.08em;
-  text-transform: uppercase;
-  font-size: clamp(1.25rem, 2.4vw, 8.8rem);
+  gap: clamp(20px, 3vw, 52px);
   text-decoration: none;
+  padding: 12px 26px;
+  border-radius: 999px;
+  background: linear-gradient(135deg, rgba(14, 165, 233, 0.14), rgba(59, 130, 246, 0.06));
+  border: 1px solid rgba(125, 211, 252, 0.28);
+  box-shadow: 0 8px 22px rgba(14, 116, 144, 0.22), inset 0 0 0 1px rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(3px);
+  isolation: isolate;
+}
+
+.app-topbar__actions {
+  position: absolute;
+  right: 12px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.app-brand,
+.app-topbar__actions {
+  z-index: 2;
+}
+
+.app-brand::before {
+  content: '';
+  position: absolute;
+  inset: -14px -20px;
+  border-radius: 999px;
+  background: radial-gradient(circle, rgba(56, 189, 248, 0.34) 0%, rgba(56, 189, 248, 0.1) 45%, transparent 75%);
+  z-index: -1;
+  pointer-events: none;
 }
 
 .app-brand span {
-  font-family: 'IBM Plex Serif', 'Space Grotesk', 'Helvetica Neue', Arial, sans-serif;
+  position: relative;
+  display: inline-flex;
+  align-items: center;
+  font-family: 'Comfortaa', 'Nunito', 'Quicksand', 'M PLUS Rounded 1c', 'Helvetica Neue', Arial, sans-serif;
+  font-weight: 700;
+  letter-spacing: 0.12em;
+  text-transform: uppercase;
+  font-size: clamp(1.6rem, 3.4vw, 3.3rem);
+  line-height: 1;
+  color: var(--brand-title-color);
+  text-shadow: 0 0 18px rgba(59, 130, 246, 0.28), 0 2px 10px rgba(15, 23, 42, 0.26);
+  isolation: isolate;
+}
+
+.app-brand span::after {
+  content: '';
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: -10px;
+  height: 2px;
+  border-radius: 999px;
+  background: linear-gradient(90deg, rgba(59, 130, 246, 0), rgba(59, 130, 246, 0.95), rgba(59, 130, 246, 0));
+  opacity: 0.85;
+}
+
+.app-brand__logo-wrap {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .app-brand img {
-  width: 480px;
-  height: 170px;
+  width: auto;
+  height: clamp(72px, 7.6vw, 108px);
+  max-width: min(46vw, 420px);
   object-fit: contain;
-  filter: drop-shadow(0 8px 6px rgba(19, 28, 47, 0.35));
+  filter: saturate(1.12) contrast(1.08) drop-shadow(0 10px 12px rgba(19, 28, 47, 0.4));
+}
+
+[data-theme='dark'] .app-brand {
+  background: linear-gradient(135deg, rgba(56, 189, 248, 0.16), rgba(30, 64, 175, 0.1));
+  border-color: rgba(56, 189, 248, 0.34);
+  box-shadow: 0 10px 26px rgba(2, 6, 23, 0.6), inset 0 0 0 1px rgba(191, 219, 254, 0.1);
+}
+
+[data-theme='dark'] .app-topbar__inner::before {
+  background:
+    radial-gradient(ellipse at center, rgba(56, 189, 248, 0.36) 0%, rgba(56, 189, 248, 0.18) 30%, rgba(56, 189, 248, 0.1) 45%, transparent 72%),
+    linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.22) 22%, rgba(125, 211, 252, 0.36) 50%, rgba(56, 189, 248, 0.22) 78%, transparent 100%);
+  opacity: 0.95;
+}
+
+[data-theme='dark'] .app-topbar__inner::after {
+  background: linear-gradient(90deg, transparent 0%, rgba(56, 189, 248, 0.12) 18%, rgba(125, 211, 252, 0.3) 50%, rgba(56, 189, 248, 0.12) 82%, transparent 100%);
+  opacity: 0.8;
+}
+
+@keyframes topbarAuraPulse {
+  0% {
+    opacity: 0.72;
+    transform: translate(-50%, -50%) scaleX(0.95);
+  }
+  50% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scaleX(1.03);
+  }
+  100% {
+    opacity: 0.72;
+    transform: translate(-50%, -50%) scaleX(0.95);
+  }
+}
+
+@keyframes topbarAuraSweep {
+  0% {
+    opacity: 0.45;
+  }
+  50% {
+    opacity: 0.9;
+  }
+  100% {
+    opacity: 0.45;
+  }
 }
 
 .app-main {
@@ -444,5 +590,36 @@ input {
   .app-footer__inner {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .app-topbar__inner {
+    justify-content: flex-start;
+    padding-right: 12px;
+  }
+
+  .app-topbar__actions {
+    position: static;
+    transform: none;
+    margin-top: 8px;
+  }
+
+  .app-brand {
+    gap: 14px;
+    padding: 8px 14px;
+  }
+
+  .app-brand span {
+    font-size: clamp(1.05rem, 8vw, 1.8rem);
+    letter-spacing: 0.14em;
+  }
+
+  .app-brand span::after {
+    bottom: -7px;
+  }
+
+  .app-brand img {
+    width: auto;
+    height: clamp(56px, 16vw, 82px);
+    max-width: 84vw;
   }
 }

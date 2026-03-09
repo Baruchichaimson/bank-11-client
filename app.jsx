@@ -8,6 +8,7 @@ import Dashboard from './pages/Dashboard.jsx';
 import Transfer from './pages/Transfer.jsx';
 import Verify from './pages/Verify.jsx';
 import ResetPassword from './pages/ResetPassword.jsx';
+import VideoCall from './pages/VideoCall.jsx';
 
 import ProtectedRoute from './components/protectedRoute.jsx';
 
@@ -25,6 +26,7 @@ export default function App() {
         <Route element={<ProtectedRoute />}>
           <Route path="/dashboard" element={<Dashboard />} />
           <Route path="/transfer" element={<Transfer />} />
+          <Route path="/video-call" element={<VideoCall />} />
         </Route>
       </Route>
     </Routes>

@@ -1,5 +1,6 @@
 import { Navigate, Outlet } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
+import IncomingCallHandler from './IncomingCallHandler.jsx';
 
 export default function ProtectedRoute() {
   const { isAuthenticated, loading } = useAuth();
@@ -10,5 +11,10 @@ export default function ProtectedRoute() {
     return <Navigate to="/login" replace />;
   }
 
-  return <Outlet />;
+  return (
+    <>
+      <IncomingCallHandler />
+      <Outlet />
+    </>
+  );
 }

@@ -8,6 +8,7 @@ import {
 } from 'react';
 import api from '../api/axios';
 import { clearJwt, getJwt, setJwt } from '../utils/authStorage.js';
+import { disconnectCallSocket } from '../api/socket.js';
 
 const AuthContext = createContext(null);
 
@@ -24,6 +25,7 @@ export function AuthProvider({ children }) {
 
   /* ================= LOGOUT ================= */
   const logout = () => {
+    disconnectCallSocket();
     clearJwt();
     setToken(null);
     setAccount(null);
@@ -85,6 +87,8 @@ export function AuthProvider({ children }) {
   /* ================= TOKEN EFFECT ================= */
   useEffect(() => {
     if (token) {
+      // Keep auth scoped to the current tab (sessionStorage) and clear shared token storage.
+      setJwt(token);
       loadAccount();
     } else {
       setLoading(false);

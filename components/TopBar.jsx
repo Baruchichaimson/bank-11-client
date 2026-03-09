@@ -11,19 +11,23 @@ export default function TopBar() {
     <header className="app-topbar">
       <div className="app-topbar__inner">
         <div className="app-brand" aria-label="Bank One One">
-          <img src={logo} alt="Bank One One logo" />
+          <div className="app-brand__logo-wrap">
+            <img src={logo} alt="Bank One One logo" />
+          </div>
           <span>Bank One One</span>
         </div>
-        <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
-          <IconButton
-            className="theme-toggle"
-            onClick={toggleMode}
-            aria-label="Toggle dark mode"
-            size="large"
-          >
-            {mode === 'dark' ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}
-          </IconButton>
-        </Tooltip>
+        <div className="app-topbar__actions">
+          <Tooltip title={mode === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}>
+            <IconButton
+              className="theme-toggle"
+              onClick={toggleMode}
+              aria-label="Toggle dark mode"
+              size="large"
+            >
+              {mode === 'dark' ? <LightModeOutlinedIcon /> : <DarkModeOutlinedIcon />}
+            </IconButton>
+          </Tooltip>
+        </div>
       </div>
     </header>
   );

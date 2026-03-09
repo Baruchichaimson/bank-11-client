@@ -1,8 +1,12 @@
 import axios from 'axios';
 import { getJwt, clearJwt } from '../utils/authStorage.js';
 
+const DEFAULT_API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL =
+  import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
+
 const api = axios.create({
-  baseURL: `https://bank-11-cd9u.onrender.com/api/v1`
+  baseURL: `${API_BASE_URL}/api/v1`
 });
 
 const AUTH_EXEMPT_PATHS = [
@@ -37,6 +41,7 @@ api.interceptors.response.use(
     return Promise.reject(err);
   }
 );
+
 api.interceptors.request.use((config) => {
   console.log(
     'AXIOS REQUEST =>',
@@ -45,4 +50,5 @@ api.interceptors.request.use((config) => {
   );
   return config;
 });
+
 export default api;
