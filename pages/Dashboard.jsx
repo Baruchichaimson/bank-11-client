@@ -1,4 +1,5 @@
 import {
+  Alert,
   Box,
   Button,
   Chip,
@@ -9,6 +10,7 @@ import {
   DialogTitle,
   Grid,
   Paper,
+  Snackbar,
   Stack,
   TextField,
   Typography
@@ -42,6 +44,8 @@ export default function Dashboard() {
   const [callPeerEmail, setCallPeerEmail] = useState('');
   const [callError, setCallError] = useState('');
   const [callLoading, setCallLoading] = useState(false);
+  const [outgoingCall, setOutgoingCall] = useState(null);
+  const [callNotice, setCallNotice] = useState('');
 
   useEffect(() => {
     console.log('DASHBOARD TOKEN:', token);
@@ -85,6 +89,74 @@ export default function Dashboard() {
     if (toEmail && toEmail === userEmail) return '+';
     return '';
   };
+
+  useEffect(() => {
+    if (!token || !userEmail) return undefined;
+
+    const socket = getOrCreateCallSocket({ token });
+    if (!socket) return undefined;
+
+    const onCallAccepted = (payload) => {
+      const acceptedCallId = String(payload?.callId || '');
+      if (!acceptedCallId) return;
+
+      setOutgoingCall((currentCall) => {
+        if (!currentCall || currentCall.callId !== acceptedCallId) {
+          return currentCall;
+        }
+
+        navigate(
+          `/video-call?room=${encodeURIComponent(payload.roomName || currentCall.roomName)}&peer=${encodeURIComponent(payload.peerEmail || currentCall.peerEmail)}&callId=${encodeURIComponent(acceptedCallId)}`
+        );
+        return null;
+      });
+    };
+
+    const onCallDeclined = (payload) => {
+      const declinedCallId = String(payload?.callId || '');
+      setOutgoingCall((currentCall) => {
+        if (!currentCall || currentCall.callId !== declinedCallId) {
+          return currentCall;
+        }
+        setCallNotice(`${payload?.byEmail || currentCall.peerEmail} declined your call.`);
+        return null;
+      });
+    };
+
+    const onCallTimeout = (payload) => {
+      const timeoutCallId = String(payload?.callId || '');
+      setOutgoingCall((currentCall) => {
+        if (!currentCall || currentCall.callId !== timeoutCallId) {
+          return currentCall;
+        }
+        setCallNotice(payload?.message || 'Call was not answered.');
+        return null;
+      });
+    };
+
+    const onCallCanceled = (payload) => {
+      const canceledCallId = String(payload?.callId || '');
+      setOutgoingCall((currentCall) => {
+        if (!currentCall || currentCall.callId !== canceledCallId) {
+          return currentCall;
+        }
+        setCallNotice('Call was canceled.');
+        return null;
+      });
+    };
+
+    socket.on('call_accepted', onCallAccepted);
+    socket.on('call_declined', onCallDeclined);
+    socket.on('call_timeout', onCallTimeout);
+    socket.on('call_canceled', onCallCanceled);
+
+    return () => {
+      socket.off('call_accepted', onCallAccepted);
+      socket.off('call_declined', onCallDeclined);
+      socket.off('call_timeout', onCallTimeout);
+      socket.off('call_canceled', onCallCanceled);
+    };
+  }, [token, userEmail, navigate]);
 
   useEffect(() => {
     const refresh = () => {
@@ -333,6 +405,7 @@ export default function Dashboard() {
                 <Button
                   variant="outlined"
                   startIcon={<VideoCallIcon />}
+                  disabled={Boolean(outgoingCall)}
                   onClick={() => {
                     setCallPeerEmail('');
                     setCallError('');
@@ -342,7 +415,7 @@ export default function Dashboard() {
                   size="large"
                   sx={{ minHeight: 50, fontSize: '1.06rem', fontWeight: 700 }}
                 >
-                  Start video call
+                  {outgoingCall ? 'Call in progress...' : 'Start video call'}
                 </Button>
                 <Button
                   variant="outlined"
@@ -441,9 +514,12 @@ export default function Dashboard() {
                 setCallOpen(false);
                 setCallPeerEmail('');
                 setCallError('');
-                navigate(
-                  `/video-call?room=${encodeURIComponent(response.roomName)}&peer=${encodeURIComponent(peer)}&callId=${encodeURIComponent(response.callId)}`
-                );
+                setOutgoingCall({
+                  callId: response.callId,
+                  roomName: response.roomName,
+                  peerEmail: peer
+                });
+                setCallNotice(`Calling ${peer}... waiting for answer.`);
               });
             }}
           >
@@ -628,6 +704,17 @@ export default function Dashboard() {
       </Dialog>
 
       <BankAssistantChat token={token} />
+
+      <Snackbar
+        open={Boolean(callNotice)}
+        autoHideDuration={3200}
+        onClose={() => setCallNotice('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="info" variant="filled" onClose={() => setCallNotice('')}>
+          {callNotice}
+        </Alert>
+      </Snackbar>
     </Box>
   );
 }

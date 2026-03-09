@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
   Alert,
   Button,
@@ -19,6 +19,41 @@ export default function IncomingCallHandler() {
   const { token, isAuthenticated } = useAuth();
   const [incomingCall, setIncomingCall] = useState(null);
   const [statusMessage, setStatusMessage] = useState('');
+  const browserNotificationRef = useRef(null);
+
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (Notification.permission === 'default') {
+      Notification.requestPermission().catch(() => {});
+    }
+  }, [isAuthenticated]);
+
+  const closeBrowserNotification = () => {
+    if (!browserNotificationRef.current) return;
+    browserNotificationRef.current.close();
+    browserNotificationRef.current = null;
+  };
+
+  const showIncomingCallNotification = (payload) => {
+    if (typeof window === 'undefined' || !('Notification' in window)) return;
+    if (document.visibilityState === 'visible') return;
+    if (Notification.permission !== 'granted') return;
+
+    closeBrowserNotification();
+    const fromText = payload?.fromName || payload?.fromEmail || 'A user';
+    const notification = new Notification('Incoming call', {
+      body: `${fromText} is calling you`,
+      tag: String(payload?.callId || 'incoming-call'),
+      requireInteraction: true
+    });
+
+    notification.onclick = () => {
+      window.focus();
+      notification.close();
+    };
+    browserNotificationRef.current = notification;
+  };
 
   useEffect(() => {
     if (!token || !isAuthenticated) return undefined;
@@ -28,6 +63,7 @@ export default function IncomingCallHandler() {
 
     const onIncomingCall = (payload) => {
       setIncomingCall(payload || null);
+      showIncomingCallNotification(payload);
     };
     const onCallDeclined = (payload) => {
       const byEmail = payload?.byEmail || 'The other user';
@@ -39,6 +75,7 @@ export default function IncomingCallHandler() {
     const onCallCanceled = (payload) => {
       setIncomingCall((prev) => {
         if (prev?.callId && payload?.callId === prev.callId) {
+          closeBrowserNotification();
           return null;
         }
         return prev;
@@ -56,6 +93,7 @@ export default function IncomingCallHandler() {
     socket.on('connect_error', onConnectError);
 
     return () => {
+      closeBrowserNotification();
       socket.off('call_incoming', onIncomingCall);
       socket.off('call_declined', onCallDeclined);
       socket.off('call_timeout', onCallTimeout);
@@ -72,6 +110,7 @@ export default function IncomingCallHandler() {
 
     const socket = getOrCreateCallSocket({ token });
     socket?.emit('call_decline', { callId: incomingCall.callId });
+    closeBrowserNotification();
     setIncomingCall(null);
   };
 
@@ -82,10 +121,12 @@ export default function IncomingCallHandler() {
     socket?.emit('call_accept', { callId: incomingCall.callId }, (response) => {
       if (!response?.ok) {
         setStatusMessage(response?.message || 'Unable to accept this call.');
+        closeBrowserNotification();
         setIncomingCall(null);
         return;
       }
 
+      closeBrowserNotification();
       setIncomingCall(null);
       const room = encodeURIComponent(response.roomName || incomingCall.roomName || '');
       const peer = encodeURIComponent(incomingCall.fromEmail || response.peerEmail || '');
