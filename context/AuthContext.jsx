@@ -12,7 +12,7 @@ import { disconnectCallSocket } from '../api/socket.js';
 
 const AuthContext = createContext(null);
 
-const INACTIVITY_LIMIT = 2 * 60 * 1000; 
+const INACTIVITY_LIMIT = 20 * 60 * 1000; 
 const DASHBOARD_PATH = '/dashboard';
 
 export function AuthProvider({ children }) {
