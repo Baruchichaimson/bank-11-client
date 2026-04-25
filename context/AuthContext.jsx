@@ -1,5 +1,6 @@
 import {
   createContext,
+  useCallback,
   useContext,
   useEffect,
   useMemo,
@@ -24,7 +25,7 @@ export function AuthProvider({ children }) {
   const inactivityTimerRef = useRef(null);
 
   /* ================= LOGOUT ================= */
-  const logout = () => {
+  const logout = useCallback(() => {
     disconnectCallSocket();
     clearJwt();
     setToken(null);
@@ -39,10 +40,10 @@ export function AuthProvider({ children }) {
     }
 
     window.location.href = '/login';
-  };
+  }, []);
 
   /* ================= LOAD ACCOUNT ================= */
-  const loadAccount = async () => {
+  const loadAccount = useCallback(async () => {
     try {
       
       const res = await api.get('/accounts/me');
@@ -56,7 +57,7 @@ export function AuthProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [logout]);
 
   /* ================= RESET INACTIVITY TIMER ================= */
   const resetInactivityTimer = () => {
@@ -93,7 +94,7 @@ export function AuthProvider({ children }) {
     } else {
       setLoading(false);
     }
-  }, [token]);
+  }, [token, loadAccount]);
 
   /* ================= ACTIVITY LISTENERS ================= */
   useEffect(() => {
@@ -133,11 +134,11 @@ export function AuthProvider({ children }) {
   }, [token]);
 
   /* ================= LOGIN ================= */
-  const login = ({ accessToken }) => {
+  const login = useCallback(({ accessToken }) => {
     if (!accessToken) return;
     setJwt(accessToken);
     setToken(accessToken);
-  };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -150,7 +151,7 @@ export function AuthProvider({ children }) {
       logout,
       reloadAccount: loadAccount
     }),
-    [token, account, transactions, loading]
+    [token, account, transactions, loading, login, logout, loadAccount]
   );
 
   return (

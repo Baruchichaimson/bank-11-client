@@ -29,8 +29,6 @@ import BankAssistantChat from '../components/BankAssistantChat.jsx';
 import { getOrCreateCallSocket } from '../api/socket.js';
 
 export default function Dashboard() {
-  console.log('DASHBOARD RENDER');
-
   const { account, transactions, loading, logout, token, reloadAccount } = useAuth();
   const navigate = useNavigate();
   const [historyOpen, setHistoryOpen] = useState(false);
@@ -48,7 +46,6 @@ export default function Dashboard() {
   const [callNotice, setCallNotice] = useState('');
 
   useEffect(() => {
-    console.log('DASHBOARD TOKEN:', token);
     if (!token) return;
 
     try {
@@ -159,11 +156,12 @@ export default function Dashboard() {
   }, [token, userEmail, navigate]);
 
   useEffect(() => {
+    if (!token) return undefined;
+
     const refresh = () => {
       reloadAccount();
     };
 
-    const intervalId = window.setInterval(refresh, 10000);
     const onFocus = () => refresh();
     const onVisibilityChange = () => {
       if (document.visibilityState === 'visible') {
@@ -175,11 +173,10 @@ export default function Dashboard() {
     document.addEventListener('visibilitychange', onVisibilityChange);
 
     return () => {
-      window.clearInterval(intervalId);
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [reloadAccount]);
+  }, [token, reloadAccount]);
 
   if (loading) {
     return (
