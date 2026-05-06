@@ -17,6 +17,8 @@ const AuthContext = createContext(null);
 const INACTIVITY_LIMIT = 20 * 60 * 1000; 
 const DASHBOARD_PATH = '/dashboard';
 const PUBLIC_PATHS = ['/login', '/register', '/verify', '/reset-password'];
+const ACCOUNT_LOAD_RETRIES = 2;
+const ACCOUNT_LOAD_RETRY_DELAY_MS = 1200;
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getJwt());
@@ -48,26 +50,42 @@ export function AuthProvider({ children }) {
   /* ================= LOAD ACCOUNT ================= */
   const loadAccount = useCallback(async () => {
     try {
-      
-      const res = await getAccount({ transactionsLimit: 5, transactionsOffset: 0 });
-      setAccount(res.data.account);
-      setTransactions(res.data.transactions);
-      return true;
-    } catch (err) {
-      const status = err.response?.status;
-      if (status === 401 || status === 403) {
-        setAccount(null);
-        setTransactions([]);
+      for (let attempt = 0; attempt <= ACCOUNT_LOAD_RETRIES; attempt += 1) {
+        try {
+          const res = await getAccount({ transactionsLimit: 5, transactionsOffset: 0 });
+          setAccount(res.data.account);
+          setTransactions(res.data.transactions);
+          return true;
+        } catch (err) {
+          const status = err.response?.status;
+          const isAuthError = status === 401 || status === 403;
+          const canRetry = !isAuthError && attempt < ACCOUNT_LOAD_RETRIES;
 
-        const path = window.location.pathname;
-        const isPublicPath = PUBLIC_PATHS.some((publicPath) =>
-          path.startsWith(publicPath)
-        );
+          if (canRetry) {
+            await new Promise((resolve) =>
+              setTimeout(resolve, ACCOUNT_LOAD_RETRY_DELAY_MS)
+            );
+            continue;
+          }
 
-        if (!isPublicPath) {
-          logout();
+          if (isAuthError) {
+            setAccount(null);
+            setTransactions([]);
+
+            const path = window.location.pathname;
+            const isPublicPath = PUBLIC_PATHS.some((publicPath) =>
+              path.startsWith(publicPath)
+            );
+
+            if (!isPublicPath) {
+              logout();
+            }
+          }
+
+          return false;
         }
       }
+
       return false;
     } finally {
       setLoading(false);

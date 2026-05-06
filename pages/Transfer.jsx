@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Box,
   Button,
@@ -24,6 +24,34 @@ export default function Transfer() {
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
+  const [warmingUp, setWarmingUp] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+
+    const warmUpServer = async () => {
+      for (let attempt = 0; attempt < 3; attempt += 1) {
+        try {
+          await api.get('/health');
+          if (isMounted) {
+            setWarmingUp(false);
+          }
+          return;
+        } catch {
+          await new Promise((resolve) => setTimeout(resolve, 1200));
+        }
+      }
+
+      if (isMounted) {
+        setWarmingUp(false);
+      }
+    };
+
+    warmUpServer();
+    return () => {
+      isMounted = false;
+    };
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -58,6 +86,11 @@ export default function Transfer() {
       }, 1500);
 
     } catch (err) {
+      if (!err.response) {
+        setError('Cannot reach server right now. Please try again in a few seconds.');
+        return;
+      }
+
       setError(
         err.response?.data?.message ||
         'Transfer failed. Please try again.'
@@ -77,6 +110,11 @@ export default function Transfer() {
 
           <Stack spacing={2} component="form" onSubmit={handleSubmit}>
             {error && <Alert severity="error">{error}</Alert>}
+            {warmingUp && (
+              <Alert severity="info">
+                Connecting to server, please wait a moment...
+              </Alert>
+            )}
 
             <TextField
               label="Receiver Email"
@@ -122,9 +160,9 @@ export default function Transfer() {
                 variant="contained"
                 type="submit"
                 fullWidth
-                disabled={loading}
+                disabled={loading || warmingUp}
               >
-                {loading ? 'Sending…' : 'Send'}
+                {loading ? 'Sending…' : warmingUp ? 'Preparing…' : 'Send'}
               </Button>
             </Stack>
           </Stack>
