@@ -1,6 +1,6 @@
 import api from './axios.js';
 
-export const getTransactions = () => api.get('/transactions');
+export const getTransactions = (params = {}) => api.get('/transactions', { params });
 
 export const getSentTransactionByRecipientName = (recipientName) =>
   api.get(`/transactions/by-recipient-name/${encodeURIComponent(recipientName)}`);

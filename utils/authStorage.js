@@ -1,20 +1,26 @@
-const JWT_STORAGE_KEY = 'jwt';
-const LEGACY_TOKEN_KEY = 'token';
+const JWT_KEY = 'bank_access_token';
 
-export const getJwt = () =>
-  sessionStorage.getItem(JWT_STORAGE_KEY) ||
-  localStorage.getItem(JWT_STORAGE_KEY) ||
-  localStorage.getItem(LEGACY_TOKEN_KEY);
+export const getJwt = () => {
+  try {
+    return sessionStorage.getItem(JWT_KEY);
+  } catch {
+    return null;
+  }
+};
 
 export const setJwt = (token) => {
-  if (!token) return;
-  sessionStorage.setItem(JWT_STORAGE_KEY, token);
-  localStorage.removeItem(JWT_STORAGE_KEY);
-  localStorage.removeItem(LEGACY_TOKEN_KEY);
+  try {
+    if (!token) return;
+    sessionStorage.setItem(JWT_KEY, token);
+  } catch {
+    // Ignore storage errors in restricted browsers/modes.
+  }
 };
 
 export const clearJwt = () => {
-  sessionStorage.removeItem(JWT_STORAGE_KEY);
-  localStorage.removeItem(JWT_STORAGE_KEY);
-  localStorage.removeItem(LEGACY_TOKEN_KEY);
+  try {
+    sessionStorage.removeItem(JWT_KEY);
+  } catch {
+    // Ignore storage errors in restricted browsers/modes.
+  }
 };

@@ -22,16 +22,17 @@ const createAuthedSocket = ({ token }) =>
   io(getSocketUrl(), {
     autoConnect: true,
     transports: ['websocket', 'polling'],
-    auth: { token }
+    withCredentials: true,
+    auth: token ? { token } : {}
   });
 
 let sharedCallSocket = null;
 let sharedCallSocketToken = null;
 
 export const getOrCreateCallSocket = ({ token }) => {
-  if (!token) return null;
+  const socketKey = token || '__cookie_auth__';
 
-  if (sharedCallSocket && sharedCallSocketToken === token) {
+  if (sharedCallSocket && sharedCallSocketToken === socketKey) {
     return sharedCallSocket;
   }
 
@@ -40,7 +41,7 @@ export const getOrCreateCallSocket = ({ token }) => {
   }
 
   sharedCallSocket = createAuthedSocket({ token });
-  sharedCallSocketToken = token;
+  sharedCallSocketToken = socketKey;
   return sharedCallSocket;
 };
 

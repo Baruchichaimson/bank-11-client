@@ -93,7 +93,7 @@ export default function Signup() {
       })
 
       .catch((err) => {
-        setError(err.response?.data?.message || 'Signup נכשל');
+        setError(err.response?.data?.message || 'Signup failed');
       })
       .finally(() => {
         setSubmitting(false);

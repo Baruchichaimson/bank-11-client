@@ -49,7 +49,7 @@ export default function Login() {
   }, [searchParams]);
 
   /* ===== Login ===== */
-  const handleSubmit = (event) => {
+  const handleSubmit = async (event) => {
     event.preventDefault();
     setError('');
     setSuccess('');
@@ -59,44 +59,47 @@ export default function Login() {
       return;
     }
 
-    loginRequest({ email, password })
-      .then((response) => {
-        login({ email, accessToken: response.data.accessToken });
+    try {
+      const response = await loginRequest({ email, password });
+      const loaded = await login({ email, accessToken: response.data.accessToken });
 
-        if (remember) {
-          localStorage.setItem('rememberMe', 'true');
-          localStorage.setItem('rememberEmail', email);
-        } else {
-          localStorage.removeItem('rememberMe');
-          localStorage.removeItem('rememberEmail');
-        }
+      if (remember) {
+        localStorage.setItem('rememberMe', 'true');
+        localStorage.setItem('rememberEmail', email);
+      } else {
+        localStorage.removeItem('rememberMe');
+        localStorage.removeItem('rememberEmail');
+      }
 
+      if (loaded) {
         navigate('/dashboard');
-      })
-      .catch((err) => {
-        const message =
-          err.response?.data?.message ||
-          'User not registered. Please sign up first.';
+      } else {
+        setError('Unable to load account details. Please try again.');
+      }
+    } catch (err) {
+      const message =
+        err.response?.data?.message ||
+        'User not registered. Please sign up first.';
 
-        if (message === 'User not registered') {
-          setError('No user found. Please register first.');
-          return;
-        }
-        if (message === 'Invalid credentials') {
-          setError('Incorrect password.');
-          return;
-        }
-        if (message === 'Email and password required') {
-          setError('Email and password are required.');
-          return;
-        }
-        if (message === 'Account not verified') {
-          setError('Account not verified. Please check your email.');
-          return;
-        }
+      if (message === 'User not registered') {
+        setError('No user found. Please register first.');
+        return;
+      }
+      if (message === 'Invalid credentials') {
+        setError('Incorrect password.');
+        return;
+      }
+      if (message === 'Email and password required') {
+        setError('Email and password are required.');
+        return;
+      }
+      if (message === 'Account not verified') {
+        setError('Account not verified. Please check your email.');
+        return;
+      }
 
-        setError(message);
-      });
+      setError(message);
+    }
   };
 
   /* ===== Forgot Password ===== */

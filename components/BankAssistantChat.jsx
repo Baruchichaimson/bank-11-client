@@ -31,13 +31,11 @@ export default function BankAssistantChat({ token }) {
   const listRef = useRef(null);
 
   useEffect(() => {
-    if (!token) return undefined;
-
     const socket = createAssistantSocket({ token });
     socketRef.current = socket;
 
     socket.on('connect_error', () => {
-      setError('Chat connection failed. Please check your token and server configuration.');
+      setError('Chat connection failed. Please check your session and server configuration.');
       setIsLoading(false);
     });
 

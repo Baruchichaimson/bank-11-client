@@ -10,11 +10,13 @@ import {
 import api from '../api/axios';
 import { clearJwt, getJwt, setJwt } from '../utils/authStorage.js';
 import { disconnectCallSocket } from '../api/socket.js';
+import { getAccount } from '../api/accounts.api.js';
 
 const AuthContext = createContext(null);
 
 const INACTIVITY_LIMIT = 20 * 60 * 1000; 
 const DASHBOARD_PATH = '/dashboard';
+const PUBLIC_PATHS = ['/login', '/register', '/verify', '/reset-password'];
 
 export function AuthProvider({ children }) {
   const [token, setToken] = useState(() => getJwt());
@@ -26,6 +28,7 @@ export function AuthProvider({ children }) {
 
   /* ================= LOGOUT ================= */
   const logout = useCallback(() => {
+    api.post('/auth/logout').catch(() => {});
     disconnectCallSocket();
     clearJwt();
     setToken(null);
@@ -46,14 +49,26 @@ export function AuthProvider({ children }) {
   const loadAccount = useCallback(async () => {
     try {
       
-      const res = await api.get('/accounts/me');
+      const res = await getAccount({ transactionsLimit: 5, transactionsOffset: 0 });
       setAccount(res.data.account);
       setTransactions(res.data.transactions);
+      return true;
     } catch (err) {
       const status = err.response?.status;
       if (status === 401 || status === 403) {
-        logout();
+        setAccount(null);
+        setTransactions([]);
+
+        const path = window.location.pathname;
+        const isPublicPath = PUBLIC_PATHS.some((publicPath) =>
+          path.startsWith(publicPath)
+        );
+
+        if (!isPublicPath) {
+          logout();
+        }
       }
+      return false;
     } finally {
       setLoading(false);
     }
@@ -87,18 +102,12 @@ export function AuthProvider({ children }) {
 
   /* ================= TOKEN EFFECT ================= */
   useEffect(() => {
-    if (token) {
-      // Keep auth scoped to the current tab (sessionStorage) and clear shared token storage.
-      setJwt(token);
-      loadAccount();
-    } else {
-      setLoading(false);
-    }
-  }, [token, loadAccount]);
+    loadAccount();
+  }, [loadAccount]);
 
   /* ================= ACTIVITY LISTENERS ================= */
   useEffect(() => {
-    if (!token) return;
+    if (!account) return;
 
     const events = [
       'mousemove',
@@ -131,18 +140,19 @@ export function AuthProvider({ children }) {
         inactivityTimerRef.current = null;
       }
     };
-  }, [token]);
+  }, [account, logout]);
 
   /* ================= LOGIN ================= */
-  const login = useCallback(({ accessToken }) => {
-    if (!accessToken) return;
+  const login = useCallback(async ({ accessToken }) => {
+    setLoading(true);
     setJwt(accessToken);
-    setToken(accessToken);
-  }, []);
+    setToken(accessToken || null);
+    return loadAccount();
+  }, [loadAccount]);
 
   const value = useMemo(
     () => ({
-      isAuthenticated: !!token,
+      isAuthenticated: !!account,
       token,
       account,
       transactions,

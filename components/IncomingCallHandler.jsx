@@ -56,7 +56,7 @@ export default function IncomingCallHandler() {
   };
 
   useEffect(() => {
-    if (!token || !isAuthenticated) return undefined;
+    if (!isAuthenticated) return undefined;
 
     const socket = getOrCreateCallSocket({ token });
     if (!socket) return undefined;
@@ -103,7 +103,7 @@ export default function IncomingCallHandler() {
   }, [token, isAuthenticated]);
 
   const handleDecline = () => {
-    if (!incomingCall || !token) {
+    if (!incomingCall) {
       setIncomingCall(null);
       return;
     }
@@ -115,7 +115,7 @@ export default function IncomingCallHandler() {
   };
 
   const handleAccept = () => {
-    if (!incomingCall || !token) return;
+    if (!incomingCall) return;
 
     const socket = getOrCreateCallSocket({ token });
     socket?.emit('call_accept', { callId: incomingCall.callId }, (response) => {

@@ -90,7 +90,13 @@ export default function Transfer() {
               label="Amount"
               type="number"
               value={amount}
-              onChange={(e) => setAmount(e.target.value)}
+              onChange={(e) => {
+                const nextValue = e.target.value;
+                if (nextValue === '' || Number(nextValue) >= 0) {
+                  setAmount(nextValue);
+                }
+              }}
+              inputProps={{ min: 0 }}
               fullWidth
               required
             />

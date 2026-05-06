@@ -23,7 +23,7 @@ import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
 import { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { getSentTransactionByRecipientName } from '../api/transactions.api.js';
+import { getSentTransactionByRecipientName, getTransactions } from '../api/transactions.api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import BankAssistantChat from '../components/BankAssistantChat.jsx';
 import { getOrCreateCallSocket } from '../api/socket.js';
@@ -32,6 +32,11 @@ export default function Dashboard() {
   const { account, transactions, loading, logout, token, reloadAccount } = useAuth();
   const navigate = useNavigate();
   const [historyOpen, setHistoryOpen] = useState(false);
+  const [historyTransactions, setHistoryTransactions] = useState([]);
+  const [historyPage, setHistoryPage] = useState(1);
+  const [historyLoading, setHistoryLoading] = useState(false);
+  const [historyError, setHistoryError] = useState('');
+  const [historyHasMore, setHistoryHasMore] = useState(false);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupRecipientName, setLookupRecipientName] = useState('');
   const [lookupResult, setLookupResult] = useState(null);
@@ -88,7 +93,7 @@ export default function Dashboard() {
   };
 
   useEffect(() => {
-    if (!token || !userEmail) return undefined;
+    if (!account) return undefined;
 
     const socket = getOrCreateCallSocket({ token });
     if (!socket) return undefined;
@@ -153,10 +158,10 @@ export default function Dashboard() {
       socket.off('call_timeout', onCallTimeout);
       socket.off('call_canceled', onCallCanceled);
     };
-  }, [token, userEmail, navigate]);
+  }, [account, token, navigate]);
 
   useEffect(() => {
-    if (!token) return undefined;
+    if (!account) return undefined;
 
     const refresh = () => {
       reloadAccount();
@@ -176,7 +181,35 @@ export default function Dashboard() {
       window.removeEventListener('focus', onFocus);
       document.removeEventListener('visibilitychange', onVisibilityChange);
     };
-  }, [token, reloadAccount]);
+  }, [account, reloadAccount]);
+
+  const HISTORY_PAGE_SIZE = 10;
+
+  const loadHistoryPage = async (page) => {
+    const nextPage = Number.isInteger(page) && page > 0 ? page : 1;
+    const offset = (nextPage - 1) * HISTORY_PAGE_SIZE;
+
+    try {
+      setHistoryLoading(true);
+      setHistoryError('');
+
+      const res = await getTransactions({
+        limit: HISTORY_PAGE_SIZE,
+        offset
+      });
+
+      const pageTransactions = res?.data?.transactions || [];
+      const hasMore = Boolean(res?.data?.pagination?.hasMore);
+
+      setHistoryTransactions(pageTransactions);
+      setHistoryHasMore(hasMore);
+      setHistoryPage(nextPage);
+    } catch (err) {
+      setHistoryError(err.response?.data?.message || 'Failed to load transfer history.');
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -310,7 +343,10 @@ export default function Dashboard() {
                   <Button
                     variant="text"
                     size="small"
-                    onClick={() => setHistoryOpen(true)}
+                    onClick={async () => {
+                      setHistoryOpen(true);
+                      await loadHistoryPage(1);
+                    }}
                     disabled={transactions.length === 0}
                     sx={{ fontSize: '1rem', fontWeight: 700 }}
                   >
@@ -483,12 +519,7 @@ export default function Dashboard() {
                 return;
               }
 
-              if (!userEmail) {
-                setCallError('Your user email is missing. Please log in again.');
-                return;
-              }
-
-              if (peer === userEmail.toLowerCase()) {
+              if (userEmail && peer === userEmail.toLowerCase()) {
                 setCallError('Please enter another user email.');
                 return;
               }
@@ -533,13 +564,21 @@ export default function Dashboard() {
       >
         <DialogTitle>Transfer history</DialogTitle>
         <DialogContent dividers sx={{ maxHeight: 520 }}>
-          {transactions.length === 0 ? (
+          {historyLoading ? (
+            <Typography color="text.secondary">
+              Loading transfer history...
+            </Typography>
+          ) : historyError ? (
+            <Typography color="error">
+              {historyError}
+            </Typography>
+          ) : historyTransactions.length === 0 ? (
             <Typography color="text.secondary">
               No transactions yet
             </Typography>
           ) : (
             <Stack spacing={2}>
-              {transactions.map((tx) => (
+              {historyTransactions.map((tx) => (
                 (() => {
                   const sign = getTxSign(tx);
                   return (
@@ -579,6 +618,18 @@ export default function Dashboard() {
           )}
         </DialogContent>
         <DialogActions>
+          <Button
+            onClick={() => loadHistoryPage(historyPage - 1)}
+            disabled={historyLoading || historyPage === 1}
+          >
+            Previous page
+          </Button>
+          <Button
+            onClick={() => loadHistoryPage(historyPage + 1)}
+            disabled={historyLoading || !historyHasMore}
+          >
+            Next page
+          </Button>
           <Button onClick={() => setHistoryOpen(false)}>Close</Button>
         </DialogActions>
       </Dialog>

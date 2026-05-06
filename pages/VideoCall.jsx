@@ -54,9 +54,7 @@ export default function VideoCall() {
     Boolean(peerEmail) &&
     peerEmail.includes('@') &&
     peerEmail !== currentUserEmail;
-  const canStartCall =
-    Boolean(currentUserEmail) &&
-    (Boolean(roomFromQuery) || hasValidPeer);
+  const canStartCall = Boolean(roomFromQuery) || (Boolean(currentUserEmail) && hasValidPeer);
 
   const roomName = roomFromQuery || (canStartCall ? buildRoomName(currentUserEmail, peerEmail) : '');
   const callUrl = canStartCall ? `${JITSI_BASE_URL}/${roomName}` : '';
