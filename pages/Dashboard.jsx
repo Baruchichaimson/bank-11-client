@@ -775,6 +775,10 @@ export default function Dashboard() {
         onAssistantAction={(action) => {
           if (action === 'open_video_call') {
             openVideoCallPopup();
+            return;
+          }
+          if (action === 'open_money_transfer') {
+            navigate('/transfer');
           }
         }}
       />
