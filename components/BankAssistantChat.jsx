@@ -29,6 +29,8 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
   const [error, setError] = useState('');
   const socketRef = useRef(null);
   const listRef = useRef(null);
+  const requestCounterRef = useRef(0);
+  const activeRequestIdRef = useRef(null);
 
   useEffect(() => {
     const socket = createAssistantSocket({ token });
@@ -40,6 +42,10 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
     });
 
     socket.on('bot_reply', (payload) => {
+      const replyRequestId = String(payload?.requestId || '');
+      if (activeRequestIdRef.current && replyRequestId && activeRequestIdRef.current !== replyRequestId) {
+        return;
+      }
       setMessages((prev) => [
         ...prev,
         { role: 'assistant', text: payload?.message || '' }
@@ -47,11 +53,17 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
       if (payload?.action && typeof onAssistantAction === 'function') {
         onAssistantAction(payload.action);
       }
+      activeRequestIdRef.current = null;
       setIsLoading(false);
     });
 
     socket.on('chat_error', (payload) => {
+      const errorRequestId = String(payload?.requestId || '');
+      if (activeRequestIdRef.current && errorRequestId && activeRequestIdRef.current !== errorRequestId) {
+        return;
+      }
       setError(payload?.message || 'Chat error.');
+      activeRequestIdRef.current = null;
       setIsLoading(false);
     });
 
@@ -106,7 +118,18 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
     setIsLoading(true);
     setInput('');
     setMessages((prev) => [...prev, { role: 'user', text }]);
-    socketRef.current.emit('chat_message', { message: text });
+    requestCounterRef.current += 1;
+    const requestId = String(requestCounterRef.current);
+    activeRequestIdRef.current = requestId;
+    socketRef.current.emit('chat_message', { requestId, message: text });
+  };
+
+  const cancelMessage = () => {
+    const requestId = activeRequestIdRef.current;
+    if (!requestId || !socketRef.current) return;
+    socketRef.current.emit('cancel_chat_message', { requestId });
+    activeRequestIdRef.current = null;
+    setIsLoading(false);
   };
 
   return (
@@ -202,6 +225,7 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
                         message.role === 'user' && !isDarkMode
                           ? '#f8fafc'
                           : chatPalette.bubbleText,
+                      whiteSpace: 'pre-line',
                       wordBreak: 'break-word'
                     }}
                   >
@@ -264,18 +288,18 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
             />
             <Button
               variant="contained"
-              onClick={sendMessage}
-              disabled={disabled}
+              onClick={isLoading ? cancelMessage : sendMessage}
+              disabled={isLoading ? false : disabled}
               sx={{
                 border: '1.5px solid',
                 borderColor: chatPalette.actionBorder,
-                bgcolor: '#2563eb',
+                bgcolor: isLoading ? '#dc2626' : '#2563eb',
                 '&:hover': {
-                  bgcolor: '#1d4ed8'
+                  bgcolor: isLoading ? '#b91c1c' : '#1d4ed8'
                 }
               }}
             >
-              Send
+              {isLoading ? 'Cancel' : 'Send'}
             </Button>
           </Stack>
         </Paper>
