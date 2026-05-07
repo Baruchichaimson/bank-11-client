@@ -129,11 +129,14 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
       ) : (
         <Paper
           sx={{
-            width: 360,
-            height: 520,
+            width: { xs: 'min(94vw, 360px)', md: 360 },
+            height: { xs: 'min(78vh, 520px)', md: 520 },
+            maxHeight: 'calc(100vh - 24px)',
             p: 1.5,
             bgcolor: chatPalette.paperBg,
             border: `1.5px solid ${chatPalette.border}`,
+            display: 'flex',
+            flexDirection: 'column',
             boxShadow: isDarkMode
               ? '0 10px 28px rgba(2, 6, 23, 0.35)'
               : '0 10px 28px rgba(15, 23, 42, 0.12)'
@@ -163,7 +166,8 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
           <Box
             ref={listRef}
             sx={{
-              height: 390,
+              flex: 1,
+              minHeight: 0,
               overflowY: 'auto',
               border: `1px solid ${chatPalette.border}`,
               bgcolor: chatPalette.messagesBg,
