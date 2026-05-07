@@ -4,10 +4,7 @@ import {
   Box,
   Button,
   Container,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
+  Paper,
   TextField,
   Typography
 } from '@mui/material';
@@ -21,18 +18,15 @@ export default function ResetPassword() {
   const [confirmPassword, setConfirmPassword] = useState('');
   const [status, setStatus] = useState('ready');
   const [message, setMessage] = useState('');
-  const [dialogOpen, setDialogOpen] = useState(true);
 
   useEffect(() => {
     const rawToken = searchParams.get('token');
     if (!rawToken) {
       setStatus('error');
       setMessage('Reset token is missing.');
-      setDialogOpen(true);
       return;
     }
     setToken(rawToken);
-    setDialogOpen(true);
   }, [searchParams]);
 
   const handleSubmit = (event) => {
@@ -60,28 +54,20 @@ export default function ResetPassword() {
       });
   };
 
-  const handleClose = () => {
-    setDialogOpen(false);
-    navigate('/login');
-  };
+  const handleGoToLogin = () => navigate('/login');
 
   return (
     <Box sx={{ py: { xs: 6, md: 10 } }}>
       <Container maxWidth="sm">
-        <Typography variant="h5" sx={{ fontWeight: 600, mb: 2 }}>
+        <Typography variant="h5" sx={{ fontWeight: 600, mb: 1 }}>
           Reset your password
         </Typography>
-        <Typography color="text.secondary">
-          Open the dialog to choose a new password for your account.
+        <Typography color="text.secondary" sx={{ mb: 3 }}>
+          Enter a new password for your account.
         </Typography>
-      </Container>
-      <Dialog open={dialogOpen} onClose={handleClose}>
-        <DialogTitle>
-          {status === 'success' ? 'Password updated' : 'Set a new password'}
-        </DialogTitle>
-        <DialogContent>
+        <Paper sx={{ p: 3 }}>
           {status !== 'success' ? (
-            <Box component="form" onSubmit={handleSubmit} sx={{ mt: 1 }}>
+            <Box component="form" onSubmit={handleSubmit}>
               <TextField
                 label="New password"
                 type="password"
@@ -108,15 +94,15 @@ export default function ResetPassword() {
               </Button>
             </Box>
           ) : (
-            <Typography color="text.secondary">{message}</Typography>
+            <>
+              <Typography color="text.secondary">{message}</Typography>
+              <Button onClick={handleGoToLogin} variant="contained" sx={{ mt: 2 }}>
+                Go to login
+              </Button>
+            </>
           )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleClose}>
-            {status === 'success' ? 'Go to login' : 'Cancel'}
-          </Button>
-        </DialogActions>
-      </Dialog>
+        </Paper>
+      </Container>
     </Box>
   );
 }

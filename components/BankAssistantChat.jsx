@@ -14,7 +14,7 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import { createAssistantSocket } from '../api/socket.js';
 
-export default function BankAssistantChat({ token }) {
+export default function BankAssistantChat({ token, onAssistantAction }) {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const [open, setOpen] = useState(false);
@@ -44,6 +44,9 @@ export default function BankAssistantChat({ token }) {
         ...prev,
         { role: 'assistant', text: payload?.message || '' }
       ]);
+      if (payload?.action && typeof onAssistantAction === 'function') {
+        onAssistantAction(payload.action);
+      }
       setIsLoading(false);
     });
 
@@ -56,7 +59,7 @@ export default function BankAssistantChat({ token }) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [token]);
+  }, [token, onAssistantAction]);
 
   useEffect(() => {
     if (!listRef.current) return;
@@ -221,6 +224,9 @@ export default function BankAssistantChat({ token }) {
             <TextField
               size="small"
               fullWidth
+              multiline
+              minRows={1}
+              maxRows={6}
               placeholder="For example: What is my balance?"
               value={input}
               onChange={(e) => setInput(e.target.value)}
@@ -246,7 +252,7 @@ export default function BankAssistantChat({ token }) {
                 }
               }}
               onKeyDown={(e) => {
-                if (e.key === 'Enter') {
+                if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
                   sendMessage();
                 }

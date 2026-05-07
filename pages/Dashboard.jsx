@@ -21,7 +21,7 @@ import AddCardIcon from '@mui/icons-material/AddCard';
 import SavingsIcon from '@mui/icons-material/Savings';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSentTransactionByRecipientName, getTransactions } from '../api/transactions.api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -49,6 +49,14 @@ export default function Dashboard() {
   const [callLoading, setCallLoading] = useState(false);
   const [outgoingCall, setOutgoingCall] = useState(null);
   const [callNotice, setCallNotice] = useState('');
+  const historyRequestIdRef = useRef(0);
+
+  const openVideoCallPopup = () => {
+    setCallPeerEmail('');
+    setCallError('');
+    setCallLoading(false);
+    setCallOpen(true);
+  };
 
   useEffect(() => {
     if (!token) return;
@@ -188,6 +196,8 @@ export default function Dashboard() {
   const loadHistoryPage = async (page) => {
     const nextPage = Number.isInteger(page) && page > 0 ? page : 1;
     const offset = (nextPage - 1) * HISTORY_PAGE_SIZE;
+    const requestId = historyRequestIdRef.current + 1;
+    historyRequestIdRef.current = requestId;
 
     try {
       setHistoryLoading(true);
@@ -201,13 +211,18 @@ export default function Dashboard() {
       const pageTransactions = res?.data?.transactions || [];
       const hasMore = Boolean(res?.data?.pagination?.hasMore);
 
+      if (requestId !== historyRequestIdRef.current) return;
+
       setHistoryTransactions(pageTransactions);
       setHistoryHasMore(hasMore);
       setHistoryPage(nextPage);
     } catch (err) {
+      if (requestId !== historyRequestIdRef.current) return;
       setHistoryError(err.response?.data?.message || 'Failed to load transfer history.');
     } finally {
-      setHistoryLoading(false);
+      if (requestId === historyRequestIdRef.current) {
+        setHistoryLoading(false);
+      }
     }
   };
 
@@ -439,12 +454,7 @@ export default function Dashboard() {
                   variant="outlined"
                   startIcon={<VideoCallIcon />}
                   disabled={Boolean(outgoingCall)}
-                  onClick={() => {
-                    setCallPeerEmail('');
-                    setCallError('');
-                    setCallLoading(false);
-                    setCallOpen(true);
-                  }}
+                  onClick={openVideoCallPopup}
                   size="large"
                   sx={{ minHeight: 50, fontSize: '1.06rem', fontWeight: 700 }}
                 >
@@ -619,13 +629,22 @@ export default function Dashboard() {
         </DialogContent>
         <DialogActions>
           <Button
-            onClick={() => loadHistoryPage(historyPage - 1)}
+            onClick={() => {
+              const prevPage = Math.max(1, historyPage - 1);
+              if (prevPage !== historyPage) {
+                loadHistoryPage(prevPage);
+              }
+            }}
             disabled={historyLoading || historyPage === 1}
           >
             Previous page
           </Button>
           <Button
-            onClick={() => loadHistoryPage(historyPage + 1)}
+            onClick={() => {
+              if (historyHasMore) {
+                loadHistoryPage(historyPage + 1);
+              }
+            }}
             disabled={historyLoading || !historyHasMore}
           >
             Next page
@@ -751,7 +770,14 @@ export default function Dashboard() {
         </DialogActions>
       </Dialog>
 
-      <BankAssistantChat token={token} />
+      <BankAssistantChat
+        token={token}
+        onAssistantAction={(action) => {
+          if (action === 'open_video_call') {
+            openVideoCallPopup();
+          }
+        }}
+      />
 
       <Snackbar
         open={Boolean(callNotice)}
