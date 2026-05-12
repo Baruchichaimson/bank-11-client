@@ -363,7 +363,8 @@ input {
 }
 
 .login-logo {
-  width: 380px;
+  width: min(380px, 88vw);
+  max-width: 100%;
   height: auto;
   display: block;
   margin-top: -8px;
@@ -621,5 +622,60 @@ input {
     width: auto;
     height: clamp(56px, 16vw, 82px);
     max-width: 84vw;
+  }
+
+  .login-shell {
+    gap: 22px;
+    padding: 24px 14px;
+  }
+
+  .login-card {
+    padding: 20px;
+    gap: 14px;
+  }
+
+  .login-title {
+    font-size: clamp(1.85rem, 9vw, 2.4rem);
+  }
+
+  .login-subtitle {
+    font-size: 0.95rem;
+  }
+
+  .login-actions {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .login-button {
+    width: 100%;
+  }
+
+  .login-modal__panel {
+    width: min(420px, 94vw);
+    padding: 20px;
+  }
+}
+
+@media (max-width: 420px) {
+  .login-logo {
+    width: min(320px, 92vw);
+  }
+
+  .login-card {
+    padding: 16px;
+    border-radius: 18px;
+  }
+
+  .login-orb--one {
+    width: 280px;
+    height: 280px;
+    right: -120px;
+  }
+
+  .login-orb--two {
+    width: 300px;
+    height: 300px;
+    left: -130px;
   }
 }
