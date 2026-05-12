@@ -39,7 +39,7 @@ export default function Dashboard() {
   const [historyHasMore, setHistoryHasMore] = useState(false);
   const [lookupOpen, setLookupOpen] = useState(false);
   const [lookupRecipientName, setLookupRecipientName] = useState('');
-  const [lookupResult, setLookupResult] = useState(null);
+  const [lookupResults, setLookupResults] = useState([]);
   const [lookupError, setLookupError] = useState('');
   const [lookupLoading, setLookupLoading] = useState(false);
   const [firstName, setFirstName] = useState('');
@@ -367,15 +367,15 @@ export default function Dashboard() {
                   >
                     View all
                   </Button>
-                    <Button
-                      variant="text"
-                      size="small"
-                      onClick={() => {
-                        setLookupRecipientName('');
-                        setLookupResult(null);
-                        setLookupError('');
-                        setLookupOpen(true);
-                      }}
+                  <Button
+                    variant="text"
+                    size="small"
+                    onClick={() => {
+                      setLookupRecipientName('');
+                      setLookupResults([]);
+                      setLookupError('');
+                      setLookupOpen(true);
+                    }}
                       sx={{ fontSize: '1rem', fontWeight: 700 }}
                     >
                       Find by name
@@ -668,7 +668,7 @@ export default function Dashboard() {
               onChange={(e) => {
                 setLookupRecipientName(e.target.value);
                 setLookupError('');
-                setLookupResult(null);
+                setLookupResults([]);
               }}
               fullWidth
               autoFocus
@@ -679,14 +679,14 @@ export default function Dashboard() {
                 const recipientName = lookupRecipientName.trim();
                 if (!recipientName) {
                   setLookupError('Please enter a recipient name.');
-                  setLookupResult(null);
+                  setLookupResults([]);
                   return;
                 }
 
                 try {
                   setLookupLoading(true);
                   setLookupError('');
-                  setLookupResult(null);
+                  setLookupResults([]);
 
                   const res = await getSentTransactionByRecipientName(recipientName);
                   const tx =
@@ -700,7 +700,7 @@ export default function Dashboard() {
                     return;
                   }
 
-                  setLookupResult(Array.isArray(tx) ? tx[0] : tx);
+                  setLookupResults(Array.isArray(tx) ? tx : [tx]);
                 } catch (err) {
                   setLookupError(
                     err.response?.data?.message ||
@@ -719,49 +719,53 @@ export default function Dashboard() {
               <Typography color="error">{lookupError}</Typography>
             )}
 
-            {lookupResult && (
-              <Paper variant="outlined" sx={{ p: 2 }}>
-                <Stack spacing={0.5}>
-                  <Typography sx={{ fontWeight: 600 }}>
-                    {lookupResult.description || 'Transfer'}
-                  </Typography>
-                  <Typography variant="body2" color="text.secondary">
-                    ID: {lookupResult._id || lookupResult.id}
-                  </Typography>
-                  {lookupResult.fromEmail && (
-                    <Typography variant="body2" color="text.secondary">
-                      From: {lookupResult.fromEmail}
-                    </Typography>
-                  )}
-                  {lookupResult.toEmail && (
-                    <Typography variant="body2" color="text.secondary">
-                      To: {lookupResult.toEmail}
-                    </Typography>
-                  )}
-                  <Typography variant="body2" color="text.secondary">
-                    Date: {new Date(lookupResult.createdAt).toLocaleString()}
-                  </Typography>
-                  {lookupResult.status && (
-                    <Typography variant="body2" color="text.secondary">
-                      Status: {lookupResult.status}
-                    </Typography>
-                  )}
-                  <Typography
-                    sx={{
-                      fontWeight: 600,
-                      color: (() => {
-                        const sign = getTxSign(lookupResult);
-                        if (sign === '+') return 'success.main';
-                        if (sign === '-') return 'error.main';
-                        return 'text.primary';
-                      })()
-                    }}
-                  >
-                    {getTxSign(lookupResult)}₪
-                    {lookupResult.amount.toLocaleString()}
-                  </Typography>
-                </Stack>
-              </Paper>
+            {lookupResults.length > 0 && (
+              <Stack spacing={1.5} sx={{ maxHeight: 360, overflowY: 'auto', pr: 0.5 }}>
+                {lookupResults.map((result) => (
+                  <Paper key={result._id || result.id} variant="outlined" sx={{ p: 2 }}>
+                    <Stack spacing={0.5}>
+                      <Typography sx={{ fontWeight: 600 }}>
+                        {result.description || 'Transfer'}
+                      </Typography>
+                      <Typography variant="body2" color="text.secondary">
+                        ID: {result._id || result.id}
+                      </Typography>
+                      {result.fromEmail && (
+                        <Typography variant="body2" color="text.secondary">
+                          From: {result.fromEmail}
+                        </Typography>
+                      )}
+                      {result.toEmail && (
+                        <Typography variant="body2" color="text.secondary">
+                          To: {result.toEmail}
+                        </Typography>
+                      )}
+                      <Typography variant="body2" color="text.secondary">
+                        Date: {new Date(result.createdAt).toLocaleString()}
+                      </Typography>
+                      {result.status && (
+                        <Typography variant="body2" color="text.secondary">
+                          Status: {result.status}
+                        </Typography>
+                      )}
+                      <Typography
+                        sx={{
+                          fontWeight: 600,
+                          color: (() => {
+                            const sign = getTxSign(result);
+                            if (sign === '+') return 'success.main';
+                            if (sign === '-') return 'error.main';
+                            return 'text.primary';
+                          })()
+                        }}
+                      >
+                        {getTxSign(result)}₪
+                        {result.amount.toLocaleString()}
+                      </Typography>
+                    </Stack>
+                  </Paper>
+                ))}
+              </Stack>
             )}
           </Stack>
         </DialogContent>
