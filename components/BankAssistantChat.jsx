@@ -31,6 +31,11 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
   const listRef = useRef(null);
   const requestCounterRef = useRef(0);
   const activeRequestIdRef = useRef(null);
+  const onAssistantActionRef = useRef(onAssistantAction);
+
+  useEffect(() => {
+    onAssistantActionRef.current = onAssistantAction;
+  }, [onAssistantAction]);
 
   useEffect(() => {
     const socket = createAssistantSocket({ token });
@@ -50,8 +55,8 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
         ...prev,
         { role: 'assistant', text: payload?.message || '' }
       ]);
-      if (payload?.action && typeof onAssistantAction === 'function') {
-        onAssistantAction(payload.action);
+      if (payload?.action && typeof onAssistantActionRef.current === 'function') {
+        onAssistantActionRef.current(payload.action);
       }
       activeRequestIdRef.current = null;
       setIsLoading(false);
@@ -71,7 +76,7 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
       socket.disconnect();
       socketRef.current = null;
     };
-  }, [token, onAssistantAction]);
+  }, [token]);
 
   useEffect(() => {
     if (!listRef.current) return;

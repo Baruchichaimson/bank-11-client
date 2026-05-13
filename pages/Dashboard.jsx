@@ -21,7 +21,7 @@ import AddCardIcon from '@mui/icons-material/AddCard';
 import SavingsIcon from '@mui/icons-material/Savings';
 import SwapHorizIcon from '@mui/icons-material/SwapHoriz';
 import VideoCallIcon from '@mui/icons-material/VideoCall';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSentTransactionByRecipientName, getTransactions } from '../api/transactions.api.js';
 import { useAuth } from '../context/AuthContext.jsx';
@@ -57,6 +57,16 @@ export default function Dashboard() {
     setCallLoading(false);
     setCallOpen(true);
   };
+
+  const handleAssistantAction = useCallback((action) => {
+    if (action === 'open_video_call') {
+      openVideoCallPopup();
+      return;
+    }
+    if (action === 'open_money_transfer') {
+      navigate('/transfer');
+    }
+  }, [navigate]);
 
   useEffect(() => {
     if (!token) return;
@@ -776,15 +786,7 @@ export default function Dashboard() {
 
       <BankAssistantChat
         token={token}
-        onAssistantAction={(action) => {
-          if (action === 'open_video_call') {
-            openVideoCallPopup();
-            return;
-          }
-          if (action === 'open_money_transfer') {
-            navigate('/transfer');
-          }
-        }}
+        onAssistantAction={handleAssistantAction}
       />
 
       <Snackbar
