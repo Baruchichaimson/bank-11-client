@@ -787,6 +787,9 @@ export default function Dashboard() {
       <BankAssistantChat
         token={token}
         onAssistantAction={handleAssistantAction}
+        onTransferSuccess={async () => {
+          await reloadAccount();
+        }}
       />
 
       <Snackbar

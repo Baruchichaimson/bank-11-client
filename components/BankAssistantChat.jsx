@@ -13,8 +13,9 @@ import { alpha, useTheme } from '@mui/material/styles';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import { createAssistantSocket } from '../api/socket.js';
+import { createTransaction } from '../api/transactions.api.js';
 
-export default function BankAssistantChat({ token, onAssistantAction }) {
+export default function BankAssistantChat({ token, onAssistantAction, onTransferSuccess }) {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
   const [open, setOpen] = useState(false);
@@ -27,6 +28,14 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
     }
   ]);
   const [error, setError] = useState('');
+  const [transferFormOpen, setTransferFormOpen] = useState(false);
+  const [transferSubmitting, setTransferSubmitting] = useState(false);
+  const [transferForm, setTransferForm] = useState({
+    receiverEmail: '',
+    amount: '',
+    description: ''
+  });
+  const [transferFormError, setTransferFormError] = useState('');
   const socketRef = useRef(null);
   const listRef = useRef(null);
   const requestCounterRef = useRef(0);
@@ -55,6 +64,9 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
         ...prev,
         { role: 'assistant', text: payload?.message || '' }
       ]);
+      if (payload?.action === 'open_money_transfer_inline') {
+        setTransferFormOpen(true);
+      }
       if (payload?.action && typeof onAssistantActionRef.current === 'function') {
         onAssistantActionRef.current(payload.action);
       }
@@ -135,6 +147,53 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
     socketRef.current.emit('cancel_chat_message', { requestId });
     activeRequestIdRef.current = null;
     setIsLoading(false);
+  };
+
+  const submitInlineTransfer = async () => {
+    const receiverEmail = String(transferForm.receiverEmail || '').trim().toLowerCase();
+    const amount = Number(transferForm.amount);
+    const description = String(transferForm.description || '').trim();
+
+    if (!receiverEmail || !receiverEmail.includes('@')) {
+      setTransferFormError('Please enter a valid recipient email.');
+      return;
+    }
+    if (!Number.isFinite(amount) || amount <= 0) {
+      setTransferFormError('Please enter a valid positive amount.');
+      return;
+    }
+
+    setTransferFormError('');
+    setTransferSubmitting(true);
+    try {
+      await createTransaction({
+        receiverEmail,
+        amount,
+        description
+      });
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: 'assistant',
+          text: `Transfer completed successfully: ${amount} ILS to ${receiverEmail}.`
+        }
+      ]);
+      setTransferForm({
+        receiverEmail: '',
+        amount: '',
+        description: ''
+      });
+      setTransferFormOpen(false);
+      if (typeof onTransferSuccess === 'function') {
+        await onTransferSuccess();
+      }
+    } catch (err) {
+      setTransferFormError(
+        err?.response?.data?.message || 'Transfer failed. Please try again.'
+      );
+    } finally {
+      setTransferSubmitting(false);
+    }
   };
 
   return (
@@ -251,6 +310,70 @@ export default function BankAssistantChat({ token, onAssistantAction }) {
             <Typography color="error" variant="caption" sx={{ mt: 0.8, display: 'block' }}>
               {error}
             </Typography>
+          ) : null}
+
+          {transferFormOpen ? (
+            <Paper
+              variant="outlined"
+              sx={{
+                mt: 1,
+                p: 1,
+                borderColor: chatPalette.actionBorder,
+                bgcolor: isDarkMode ? 'rgba(15, 23, 42, 0.75)' : '#eff6ff'
+              }}
+            >
+              <Stack spacing={1}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  Quick Transfer
+                </Typography>
+                <TextField
+                  size="small"
+                  label="Recipient email"
+                  value={transferForm.receiverEmail}
+                  onChange={(e) => setTransferForm((prev) => ({ ...prev, receiverEmail: e.target.value }))}
+                />
+                <TextField
+                  size="small"
+                  type="number"
+                  label="Amount (ILS)"
+                  value={transferForm.amount}
+                  onChange={(e) => setTransferForm((prev) => ({ ...prev, amount: e.target.value }))}
+                  inputProps={{ min: 0, step: '0.01' }}
+                />
+                <TextField
+                  size="small"
+                  label="Description (optional)"
+                  value={transferForm.description}
+                  onChange={(e) => setTransferForm((prev) => ({ ...prev, description: e.target.value }))}
+                />
+                {transferFormError ? (
+                  <Typography color="error" variant="caption">
+                    {transferFormError}
+                  </Typography>
+                ) : null}
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => {
+                      setTransferFormOpen(false);
+                      setTransferFormError('');
+                    }}
+                    disabled={transferSubmitting}
+                  >
+                    Cancel
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={submitInlineTransfer}
+                    disabled={transferSubmitting}
+                  >
+                    {transferSubmitting ? 'Sending…' : 'Send transfer'}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Paper>
           ) : null}
 
           <Stack direction="row" spacing={1} sx={{ mt: 1 }}>
