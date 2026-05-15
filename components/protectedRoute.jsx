@@ -3,11 +3,11 @@ import { useAuth } from '../context/AuthContext';
 import IncomingCallHandler from './IncomingCallHandler.jsx';
 
 export default function ProtectedRoute() {
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, token, loading } = useAuth();
 
   if (loading) return null;
 
-  if (!isAuthenticated) {
+  if (!isAuthenticated || !token) {
     return <Navigate to="/login" replace />;
   }
 

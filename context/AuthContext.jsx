@@ -29,8 +29,13 @@ export function AuthProvider({ children }) {
   const inactivityTimerRef = useRef(null);
 
   /* ================= LOGOUT ================= */
-  const logout = useCallback(() => {
-    api.post('/auth/logout').catch(() => {});
+  const logout = useCallback(async () => {
+    try {
+      await api.post('/auth/logout');
+    } catch {
+      // Continue local logout flow even if backend logout request fails.
+    }
+
     disconnectCallSocket();
     clearJwt();
     setToken(null);
@@ -44,7 +49,7 @@ export function AuthProvider({ children }) {
       inactivityTimerRef.current = null;
     }
 
-    window.location.href = '/login';
+    window.location.replace('/login');
   }, []);
 
   /* ================= LOAD ACCOUNT ================= */

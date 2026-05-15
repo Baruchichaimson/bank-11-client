@@ -236,6 +236,44 @@ export default function Dashboard() {
     }
   };
 
+  const workflowNodes = [
+    {
+      id: '1',
+      title: 'Intent Analysis',
+      subtitle: 'LLM + deterministic intent routing',
+      detail: 'Detects transfer, balance, history, identity, or support actions.',
+      color: '#4f46e5'
+    },
+    {
+      id: '2',
+      title: 'Account Evaluation',
+      subtitle: 'Backend data aggregation',
+      detail: 'Loads account state, recent transactions, and eligibility facts.',
+      color: '#0ea5e9'
+    },
+    {
+      id: '3',
+      title: 'Risk Assessment',
+      subtitle: 'Rules + policy checks',
+      detail: 'Evaluates limits, suspicious patterns, and verification requirements.',
+      color: '#ef4444'
+    },
+    {
+      id: '4',
+      title: 'Transaction Execution',
+      subtitle: 'Deterministic execution path',
+      detail: 'Executes transfer through transactional backend logic.',
+      color: '#16a34a'
+    },
+    {
+      id: '5',
+      title: 'Response Generation',
+      subtitle: 'Safe user-facing output',
+      detail: 'Returns clear results, next actions, and guardrail-aligned guidance.',
+      color: '#7c3aed'
+    }
+  ];
+
   if (loading) {
     return (
       <Box sx={{ py: 8, textAlign: 'center' }}>
@@ -492,6 +530,79 @@ export default function Dashboard() {
             </Paper>
           </Grid>
         </Grid>
+
+        <Paper
+          sx={{
+            mt: 4,
+            p: { xs: 2.5, md: 3.5 },
+            border: '1px solid',
+            borderColor: 'divider',
+            background:
+              'linear-gradient(160deg, rgba(14,165,233,0.08) 0%, rgba(79,70,229,0.08) 42%, rgba(22,163,74,0.08) 100%)'
+          }}
+        >
+          <Stack spacing={1.2} sx={{ mb: 3 }}>
+            <Typography variant="h6" sx={{ fontWeight: 800, fontSize: { xs: '1.45rem', md: '1.8rem' } }}>
+              AI Banking Workflow Orchestration
+            </Typography>
+            <Typography color="text.secondary">
+              Structured enterprise flow with state, conditional routing, business rules, and backend integration.
+            </Typography>
+            <Stack direction="row" spacing={1} flexWrap="wrap" useFlexGap>
+              <Chip label="Deterministic Execution" color="success" size="small" />
+              <Chip label="Conditional Flow" color="warning" size="small" />
+              <Chip label="Risk Controls" color="error" size="small" />
+              <Chip label="Backend Integrated" color="primary" size="small" />
+            </Stack>
+          </Stack>
+
+          <Grid container spacing={2}>
+            {workflowNodes.map((node, index) => (
+              <Grid item xs={12} md={index === 2 ? 12 : 6} lg={index === 2 ? 12 : 6} key={node.id}>
+                <Paper
+                  variant="outlined"
+                  sx={{
+                    p: 2.1,
+                    height: '100%',
+                    borderLeft: `6px solid ${node.color}`,
+                    backgroundColor: 'rgba(255,255,255,0.72)'
+                  }}
+                >
+                  <Stack direction="row" alignItems="center" justifyContent="space-between" sx={{ mb: 0.7 }}>
+                    <Typography sx={{ fontWeight: 800 }}>
+                      {node.id}. {node.title}
+                    </Typography>
+                    <Chip
+                      label={node.id === '3' ? 'Decision Node' : 'Process Node'}
+                      size="small"
+                      sx={{
+                        fontWeight: 700,
+                        bgcolor: `${node.color}1A`,
+                        color: node.color
+                      }}
+                    />
+                  </Stack>
+                  <Typography variant="body2" sx={{ fontWeight: 700, mb: 0.4 }}>
+                    {node.subtitle}
+                  </Typography>
+                  <Typography variant="body2" color="text.secondary">
+                    {node.detail}
+                  </Typography>
+                  {node.id === '3' ? (
+                    <Stack direction="row" spacing={1} sx={{ mt: 1.4 }} flexWrap="wrap" useFlexGap>
+                      <Chip label="High Risk -> Manual Review / Verification" color="error" size="small" />
+                      <Chip label="Low Risk -> Continue to Execution" color="success" size="small" />
+                    </Stack>
+                  ) : null}
+                </Paper>
+              </Grid>
+            ))}
+          </Grid>
+
+          <Typography variant="body2" color="text.secondary" sx={{ mt: 2 }}>
+            Implementation reference: backend orchestration in <code>ai/chatAssistant.js</code>, <code>ai/transferGraph.js</code>, and domain/tool logic in <code>ai/bankingTools.js</code>.
+          </Typography>
+        </Paper>
       </Container>
 
       <Dialog
