@@ -13,7 +13,6 @@ import { alpha, useTheme } from '@mui/material/styles';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import { createAssistantSocket } from '../api/socket.js';
-import { createTransaction } from '../api/transactions.api.js';
 
 export default function BankAssistantChat({ token, onAssistantAction, onTransferSuccess }) {
   const theme = useTheme();
@@ -64,6 +63,12 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
         ...prev,
         { role: 'assistant', text: payload?.message || '' }
       ]);
+      const botText = String(payload?.message || '').toLowerCase();
+      const transferSucceeded =
+        botText.includes('transfer completed') || botText.includes('ההעברה בוצעה בהצלחה');
+      if (transferSucceeded && typeof onTransferSuccess === 'function') {
+        onTransferSuccess().catch(() => {});
+      }
       if (payload?.action === 'open_money_transfer_inline') {
         setTransferFormOpen(true);
       }
@@ -163,37 +168,32 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       return;
     }
 
+    if (!socketRef.current) {
+      setTransferFormError('Chat is not connected right now. Please try again.');
+      return;
+    }
+
     setTransferFormError('');
     setTransferSubmitting(true);
-    try {
-      await createTransaction({
-        receiverEmail,
-        amount,
-        description
-      });
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: 'assistant',
-          text: `Transfer completed successfully: ${amount} ILS to ${receiverEmail}.`
-        }
-      ]);
-      setTransferForm({
-        receiverEmail: '',
-        amount: '',
-        description: ''
-      });
-      setTransferFormOpen(false);
-      if (typeof onTransferSuccess === 'function') {
-        await onTransferSuccess();
-      }
-    } catch (err) {
-      setTransferFormError(
-        err?.response?.data?.message || 'Transfer failed. Please try again.'
-      );
-    } finally {
-      setTransferSubmitting(false);
-    }
+
+    const transferMessage = description
+      ? `make transfer to ${receiverEmail} amount ${amount} description ${description}`
+      : `make transfer to ${receiverEmail} amount ${amount}`;
+
+    setMessages((prev) => [...prev, { role: 'user', text: transferMessage }]);
+    requestCounterRef.current += 1;
+    const requestId = String(requestCounterRef.current);
+    activeRequestIdRef.current = requestId;
+    setIsLoading(true);
+    socketRef.current.emit('chat_message', { requestId, message: transferMessage });
+
+    setTransferForm({
+      receiverEmail: '',
+      amount: '',
+      description: ''
+    });
+    setTransferFormOpen(false);
+    setTransferSubmitting(false);
   };
 
   return (
