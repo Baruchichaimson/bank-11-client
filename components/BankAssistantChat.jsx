@@ -36,6 +36,9 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
   });
   const [transferFormError, setTransferFormError] = useState('');
   const [transferFormLanguage, setTransferFormLanguage] = useState('en');
+  const [highAmountConfirmOpen, setHighAmountConfirmOpen] = useState(false);
+  const [highAmountConfirmMessage, setHighAmountConfirmMessage] = useState('');
+  const [highAmountConfirmLanguage, setHighAmountConfirmLanguage] = useState('en');
   const socketRef = useRef(null);
   const listRef = useRef(null);
   const requestCounterRef = useRef(0);
@@ -75,6 +78,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       if (transferSucceeded && typeof onTransferSuccess === 'function') {
         onTransferSuccess().catch(() => {});
         setTransferFormOpen(false);
+        setHighAmountConfirmOpen(false);
         setTransferFormError('');
         setTransferForm({
           receiverEmail: '',
@@ -85,6 +89,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       const actionType = typeof payload?.action === 'string' ? payload.action : payload?.action?.type;
       if (actionType === 'open_money_transfer_inline') {
         setTransferFormOpen(true);
+        setHighAmountConfirmOpen(false);
         if (payload?.action?.language === 'he' || payload?.action?.language === 'en') {
           setTransferFormLanguage(payload.action.language);
         }
@@ -96,6 +101,14 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
           setTransferFormLanguage(payload.action.language);
         }
         setTransferFormError(String(payload?.action?.message || ''));
+      }
+      if (actionType === 'transfer_high_amount_confirm') {
+        setTransferFormOpen(false);
+        setHighAmountConfirmOpen(true);
+        setHighAmountConfirmMessage(String(payload?.action?.message || ''));
+        if (payload?.action?.language === 'he' || payload?.action?.language === 'en') {
+          setHighAmountConfirmLanguage(payload.action.language);
+        }
       }
       if (payload?.action && typeof onAssistantActionRef.current === 'function') {
         onAssistantActionRef.current(actionType || payload.action);
@@ -223,6 +236,20 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     activeRequestIdRef.current = requestId;
     setIsLoading(true);
     socketRef.current.emit('chat_message', { requestId, message: transferMessage });
+  };
+
+  const submitHighAmountConfirmation = (approved) => {
+    if (!socketRef.current) return;
+    const text = approved
+      ? (highAmountConfirmLanguage === 'he' ? 'כן' : 'yes')
+      : (highAmountConfirmLanguage === 'he' ? 'לא' : 'no');
+
+    setHighAmountConfirmOpen(false);
+    setIsLoading(true);
+    requestCounterRef.current += 1;
+    const requestId = String(requestCounterRef.current);
+    activeRequestIdRef.current = requestId;
+    socketRef.current.emit('chat_message', { requestId, message: text });
   };
 
   return (
@@ -387,6 +414,11 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
                     onClick={() => {
                       setTransferFormOpen(false);
                       setTransferFormError('');
+                      setTransferForm({
+                        receiverEmail: '',
+                        amount: '',
+                        description: ''
+                      });
                     }}
                     disabled={transferSubmitting}
                   >
@@ -399,6 +431,45 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
                     disabled={transferSubmitting}
                   >
                     {transferSubmitting ? 'Sending…' : 'Send transfer'}
+                  </Button>
+                </Stack>
+              </Stack>
+            </Paper>
+          ) : null}
+
+          {highAmountConfirmOpen ? (
+            <Paper
+              variant="outlined"
+              sx={{
+                mt: 1,
+                p: 1,
+                borderColor: chatPalette.actionBorder,
+                bgcolor: isDarkMode ? 'rgba(15, 23, 42, 0.75)' : '#eff6ff'
+              }}
+            >
+              <Stack spacing={1}>
+                <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
+                  {highAmountConfirmLanguage === 'he' ? 'אישור נוסף להעברה' : 'Additional transfer confirmation'}
+                </Typography>
+                <Typography variant="body2">
+                  {highAmountConfirmMessage}
+                </Typography>
+                <Stack direction="row" spacing={1}>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={() => submitHighAmountConfirmation(false)}
+                    disabled={isLoading}
+                  >
+                    {highAmountConfirmLanguage === 'he' ? 'לא' : 'No'}
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="contained"
+                    onClick={() => submitHighAmountConfirmation(true)}
+                    disabled={isLoading}
+                  >
+                    {highAmountConfirmLanguage === 'he' ? 'כן' : 'Yes'}
                   </Button>
                 </Stack>
               </Stack>
