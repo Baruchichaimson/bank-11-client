@@ -218,7 +218,6 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       ? `make transfer to ${receiverEmail} amount ${amount} description ${description}`
       : `make transfer to ${receiverEmail} amount ${amount}`;
 
-    setMessages((prev) => [...prev, { role: 'user', text: transferMessage }]);
     requestCounterRef.current += 1;
     const requestId = String(requestCounterRef.current);
     activeRequestIdRef.current = requestId;
