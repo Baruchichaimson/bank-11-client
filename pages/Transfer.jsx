@@ -3,6 +3,10 @@ import {
   Box,
   Button,
   Container,
+  Dialog,
+  DialogActions,
+  DialogContent,
+  DialogTitle,
   Paper,
   Stack,
   TextField,
@@ -16,7 +20,7 @@ import { useAuth } from '../context/AuthContext';
 
 export default function Transfer() {
   const navigate = useNavigate();
-  const { reloadAccount } = useAuth();
+  const { reloadAccount, account } = useAuth();
 
   const [receiverEmail, setReceiverEmail] = useState('');
   const [amount, setAmount] = useState('');
@@ -25,6 +29,7 @@ export default function Transfer() {
   const [loading, setLoading] = useState(false);
   const [successOpen, setSuccessOpen] = useState(false);
   const [warmingUp, setWarmingUp] = useState(true);
+  const [confirmHighAmountOpen, setConfirmHighAmountOpen] = useState(false);
 
   useEffect(() => {
     let isMounted = true;
@@ -53,8 +58,7 @@ export default function Transfer() {
     };
   }, []);
 
-  const handleSubmit = async (e) => {
-    e.preventDefault();
+  const executeTransfer = async ({ riskConfirmed = false } = {}) => {
     setError('');
 
     if (!receiverEmail || !amount) {
@@ -62,30 +66,44 @@ export default function Transfer() {
       return;
     }
 
-    if (Number(amount) <= 0) {
+    const numericAmount = Number(amount);
+    if (numericAmount <= 0) {
       setError('Amount must be greater than zero');
+      return;
+    }
+
+    const availableBalance = Number(account?.balance);
+    if (Number.isFinite(availableBalance) && numericAmount > availableBalance) {
+      setError(`Insufficient balance. Available: ${availableBalance.toFixed(2)} ILS`);
       return;
     }
 
     try {
       setLoading(true);
 
-      // ⬅️ שליחה אחת בלבד
       await api.post('/transactions', {
         receiverEmail,
-        amount: Number(amount),
-        description
+        amount: numericAmount,
+        description,
+        riskConfirmed
       });
 
-      // ⬅️ הצלחה
+      setConfirmHighAmountOpen(false);
       setSuccessOpen(true);
       await reloadAccount();
 
       setTimeout(() => {
         navigate('/dashboard');
       }, 1500);
-
     } catch (err) {
+      const requiresAdditionalConfirmation = Boolean(
+        err?.response?.data?.requiresAdditionalConfirmation
+      );
+      if (requiresAdditionalConfirmation) {
+        setConfirmHighAmountOpen(true);
+        return;
+      }
+
       if (!err.response) {
         setError('Cannot reach server right now. Please try again in a few seconds.');
         return;
@@ -98,6 +116,11 @@ export default function Transfer() {
     } finally {
       setLoading(false);
     }
+  };
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+    await executeTransfer({ riskConfirmed: false });
   };
 
   return (
@@ -187,6 +210,37 @@ export default function Transfer() {
           The funds have been sent and your account balance has been updated.
         </Alert>
       </Snackbar>
+
+      <Dialog
+        open={confirmHighAmountOpen}
+        onClose={() => {
+          if (!loading) setConfirmHighAmountOpen(false);
+        }}
+        maxWidth="xs"
+        fullWidth
+      >
+        <DialogTitle>Additional Confirmation</DialogTitle>
+        <DialogContent dividers>
+          <Typography variant="body2">
+            This transfer amount is above 1000 ILS. Are you sure you want to proceed?
+          </Typography>
+        </DialogContent>
+        <DialogActions>
+          <Button
+            onClick={() => setConfirmHighAmountOpen(false)}
+            disabled={loading}
+          >
+            No
+          </Button>
+          <Button
+            variant="contained"
+            onClick={() => executeTransfer({ riskConfirmed: true })}
+            disabled={loading}
+          >
+            Yes
+          </Button>
+        </DialogActions>
+      </Dialog>
     </Box>
   );
 }
