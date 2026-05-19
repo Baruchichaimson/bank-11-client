@@ -789,6 +789,9 @@ export default function Dashboard() {
         onAssistantAction={handleAssistantAction}
         onTransferSuccess={async () => {
           await reloadAccount();
+          if (historyOpen) {
+            await loadHistoryPage(1);
+          }
         }}
       />
 

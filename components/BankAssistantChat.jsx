@@ -69,7 +69,9 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       }
       const botText = messageText.toLowerCase();
       const transferSucceeded =
-        botText.includes('transfer completed') || botText.includes('ההעברה בוצעה בהצלחה');
+        botText.includes('transfer completed') ||
+        botText.includes('ההעברה בוצעה בהצלחה') ||
+        botText.includes('ההעברה הושלמה בהצלחה');
       if (transferSucceeded && typeof onTransferSuccess === 'function') {
         onTransferSuccess().catch(() => {});
         setTransferFormOpen(false);
