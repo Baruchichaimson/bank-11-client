@@ -35,6 +35,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     description: ''
   });
   const [transferFormError, setTransferFormError] = useState('');
+  const [transferFormLanguage, setTransferFormLanguage] = useState('en');
   const socketRef = useRef(null);
   const listRef = useRef(null);
   const requestCounterRef = useRef(0);
@@ -59,24 +60,47 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       if (activeRequestIdRef.current && replyRequestId && activeRequestIdRef.current !== replyRequestId) {
         return;
       }
-      setMessages((prev) => [
-        ...prev,
-        { role: 'assistant', text: payload?.message || '' }
-      ]);
-      const botText = String(payload?.message || '').toLowerCase();
+      const messageText = String(payload?.message || '');
+      if (messageText.trim()) {
+        setMessages((prev) => [
+          ...prev,
+          { role: 'assistant', text: messageText }
+        ]);
+      }
+      const botText = messageText.toLowerCase();
       const transferSucceeded =
         botText.includes('transfer completed') || botText.includes('ההעברה בוצעה בהצלחה');
       if (transferSucceeded && typeof onTransferSuccess === 'function') {
         onTransferSuccess().catch(() => {});
+        setTransferFormOpen(false);
+        setTransferFormError('');
+        setTransferForm({
+          receiverEmail: '',
+          amount: '',
+          description: ''
+        });
       }
-      if (payload?.action === 'open_money_transfer_inline') {
+      const actionType = typeof payload?.action === 'string' ? payload.action : payload?.action?.type;
+      if (actionType === 'open_money_transfer_inline') {
         setTransferFormOpen(true);
+        if (payload?.action?.language === 'he' || payload?.action?.language === 'en') {
+          setTransferFormLanguage(payload.action.language);
+        }
+      }
+      if (actionType === 'transfer_form_error') {
+        setTransferFormOpen(true);
+        setTransferSubmitting(false);
+        if (payload?.action?.language === 'he' || payload?.action?.language === 'en') {
+          setTransferFormLanguage(payload.action.language);
+        }
+        setTransferFormError(String(payload?.action?.message || ''));
       }
       if (payload?.action && typeof onAssistantActionRef.current === 'function') {
-        onAssistantActionRef.current(payload.action);
+        onAssistantActionRef.current(actionType || payload.action);
       }
       activeRequestIdRef.current = null;
       setIsLoading(false);
+      setTransferSubmitting(false);
     });
 
     socket.on('chat_error', (payload) => {
@@ -160,16 +184,28 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     const description = String(transferForm.description || '').trim();
 
     if (!receiverEmail || !receiverEmail.includes('@')) {
-      setTransferFormError('Please enter a valid recipient email.');
+      setTransferFormError(
+        transferFormLanguage === 'he'
+          ? 'נא להזין אימייל תקין של נמען.'
+          : 'Please enter a valid recipient email.'
+      );
       return;
     }
     if (!Number.isFinite(amount) || amount <= 0) {
-      setTransferFormError('Please enter a valid positive amount.');
+      setTransferFormError(
+        transferFormLanguage === 'he'
+          ? 'נא להזין סכום תקין גדול מ-0.'
+          : 'Please enter a valid positive amount.'
+      );
       return;
     }
 
     if (!socketRef.current) {
-      setTransferFormError('Chat is not connected right now. Please try again.');
+      setTransferFormError(
+        transferFormLanguage === 'he'
+          ? 'הצ׳אט אינו מחובר כרגע. נסה שוב.'
+          : 'Chat is not connected right now. Please try again.'
+      );
       return;
     }
 
@@ -186,14 +222,6 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     activeRequestIdRef.current = requestId;
     setIsLoading(true);
     socketRef.current.emit('chat_message', { requestId, message: transferMessage });
-
-    setTransferForm({
-      receiverEmail: '',
-      amount: '',
-      description: ''
-    });
-    setTransferFormOpen(false);
-    setTransferSubmitting(false);
   };
 
   return (
