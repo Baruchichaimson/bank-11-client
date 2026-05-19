@@ -110,6 +110,16 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
           setHighAmountConfirmLanguage(payload.action.language);
         }
       }
+      if (actionType === 'reset_transfer_form') {
+        setTransferFormOpen(false);
+        setHighAmountConfirmOpen(false);
+        setTransferFormError('');
+        setTransferForm({
+          receiverEmail: '',
+          amount: '',
+          description: ''
+        });
+      }
       if (payload?.action && typeof onAssistantActionRef.current === 'function') {
         onAssistantActionRef.current(actionType || payload.action);
       }
