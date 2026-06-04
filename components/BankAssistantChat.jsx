@@ -14,6 +14,8 @@ import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import { createAssistantSocket } from '../api/socket.js';
 
+const isActiveTransferPhase = (phase) => Boolean(phase && phase !== 'idle');
+
 export default function BankAssistantChat({ token, onAssistantAction, onTransferSuccess }) {
   const theme = useTheme();
   const isDarkMode = theme.palette.mode === 'dark';
@@ -39,6 +41,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
   const [highAmountConfirmOpen, setHighAmountConfirmOpen] = useState(false);
   const [highAmountConfirmMessage, setHighAmountConfirmMessage] = useState('');
   const [highAmountConfirmLanguage, setHighAmountConfirmLanguage] = useState('en');
+  const [activeTransferPhase, setActiveTransferPhase] = useState('idle');
   const socketRef = useRef(null);
   const listRef = useRef(null);
   const requestCounterRef = useRef(0);
@@ -63,6 +66,12 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       if (activeRequestIdRef.current && replyRequestId && activeRequestIdRef.current !== replyRequestId) {
         return;
       }
+      const nextTransferPhase = payload?.nextTransferState?.phase;
+      if (typeof nextTransferPhase === 'string') {
+        setActiveTransferPhase(nextTransferPhase);
+      } else if (Object.prototype.hasOwnProperty.call(payload || {}, 'nextTransferState')) {
+        setActiveTransferPhase('idle');
+      }
       const messageText = String(payload?.message || '');
       if (messageText.trim()) {
         setMessages((prev) => [
@@ -79,6 +88,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
         onTransferSuccess().catch(() => {});
         setTransferFormOpen(false);
         setHighAmountConfirmOpen(false);
+        setActiveTransferPhase('idle');
         setTransferFormError('');
         setTransferForm({
           receiverEmail: '',
@@ -90,6 +100,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       if (actionType === 'open_money_transfer_inline') {
         setTransferFormOpen(true);
         setHighAmountConfirmOpen(false);
+        setActiveTransferPhase('form_open');
         if (payload?.action?.language === 'he' || payload?.action?.language === 'en') {
           setTransferFormLanguage(payload.action.language);
         }
@@ -105,6 +116,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       if (actionType === 'transfer_high_amount_confirm') {
         setTransferFormOpen(false);
         setHighAmountConfirmOpen(true);
+        setActiveTransferPhase('await_confirmation');
         setHighAmountConfirmMessage(String(payload?.action?.message || ''));
         if (payload?.action?.language === 'he' || payload?.action?.language === 'en') {
           setHighAmountConfirmLanguage(payload.action.language);
@@ -113,6 +125,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       if (actionType === 'reset_transfer_form') {
         setTransferFormOpen(false);
         setHighAmountConfirmOpen(false);
+        setActiveTransferPhase('idle');
         setTransferFormError('');
         setTransferForm({
           receiverEmail: '',
@@ -136,6 +149,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       setError(payload?.message || 'Chat error.');
       activeRequestIdRef.current = null;
       setIsLoading(false);
+      setTransferSubmitting(false);
     });
 
     return () => {
@@ -149,10 +163,15 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     listRef.current.scrollTop = listRef.current.scrollHeight;
   }, [messages, isLoading]);
 
-  const disabled = useMemo(
-    () => !socketRef.current || isLoading || !input.trim(),
-    [isLoading, input]
+  const isWorkflowActive = useMemo(
+    () => transferFormOpen || highAmountConfirmOpen || isActiveTransferPhase(activeTransferPhase),
+    [activeTransferPhase, highAmountConfirmOpen, transferFormOpen]
   );
+  const chatSendDisabled = useMemo(
+    () => !socketRef.current || isLoading || isWorkflowActive || !input.trim(),
+    [isLoading, isWorkflowActive, input]
+  );
+  const canCancelMessage = isLoading && !isWorkflowActive;
   const chatPalette = useMemo(
     () =>
       isDarkMode
@@ -183,7 +202,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
 
   const sendMessage = () => {
     const text = input.trim();
-    if (!text || !socketRef.current) return;
+    if (isWorkflowActive || isLoading || !text || !socketRef.current) return;
 
     setError('');
     setIsLoading(true);
@@ -237,15 +256,47 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     setTransferFormError('');
     setTransferSubmitting(true);
 
-    const transferMessage = description
-      ? `make transfer to ${receiverEmail} amount ${amount} description ${description}`
-      : `make transfer to ${receiverEmail} amount ${amount}`;
+    const transferMessage = transferFormLanguage === 'he'
+      ? 'פרטי העברה נשלחו מהטופס'
+      : 'Transfer form submitted';
 
     requestCounterRef.current += 1;
     const requestId = String(requestCounterRef.current);
     activeRequestIdRef.current = requestId;
     setIsLoading(true);
-    socketRef.current.emit('chat_message', { requestId, message: transferMessage });
+    socketRef.current.emit('chat_message', {
+      requestId,
+      message: transferMessage,
+      transferPayload: {
+        receiverEmail,
+        amount,
+        description: description || null
+      }
+    });
+  };
+
+  const cancelInlineTransfer = () => {
+    setTransferFormOpen(false);
+    setTransferFormError('');
+    setTransferForm({
+      receiverEmail: '',
+      amount: '',
+      description: ''
+    });
+
+    if (!socketRef.current) return;
+
+    requestCounterRef.current += 1;
+    const requestId = String(requestCounterRef.current);
+    activeRequestIdRef.current = requestId;
+    setIsLoading(true);
+    socketRef.current.emit('chat_message', {
+      requestId,
+      message: transferFormLanguage === 'he' ? 'בטל' : 'cancel',
+      transferPayload: {
+        confirmation: 'no'
+      }
+    });
   };
 
   const submitHighAmountConfirmation = (approved) => {
@@ -259,7 +310,13 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     requestCounterRef.current += 1;
     const requestId = String(requestCounterRef.current);
     activeRequestIdRef.current = requestId;
-    socketRef.current.emit('chat_message', { requestId, message: text });
+    socketRef.current.emit('chat_message', {
+      requestId,
+      message: text,
+      transferPayload: {
+        confirmation: approved ? 'yes' : 'no'
+      }
+    });
   };
 
   return (
@@ -421,15 +478,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
                   <Button
                     size="small"
                     variant="outlined"
-                    onClick={() => {
-                      setTransferFormOpen(false);
-                      setTransferFormError('');
-                      setTransferForm({
-                        receiverEmail: '',
-                        amount: '',
-                        description: ''
-                      });
-                    }}
+                    onClick={cancelInlineTransfer}
                     disabled={transferSubmitting}
                   >
                     Cancel
@@ -496,6 +545,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
               placeholder="For example: What is my balance?"
               value={input}
               onChange={(e) => setInput(e.target.value)}
+              disabled={isWorkflowActive}
               sx={{
                 '& .MuiOutlinedInput-root': {
                   bgcolor: isDarkMode ? alpha('#0f172a', 0.45) : '#ffffff',
@@ -520,24 +570,26 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
-                  sendMessage();
+                  if (!chatSendDisabled) {
+                    sendMessage();
+                  }
                 }
               }}
             />
             <Button
               variant="contained"
-              onClick={isLoading ? cancelMessage : sendMessage}
-              disabled={isLoading ? false : disabled}
+              onClick={canCancelMessage ? cancelMessage : sendMessage}
+              disabled={canCancelMessage ? false : chatSendDisabled}
               sx={{
                 border: '1.5px solid',
                 borderColor: chatPalette.actionBorder,
-                bgcolor: isLoading ? '#dc2626' : '#2563eb',
+                bgcolor: canCancelMessage ? '#dc2626' : '#2563eb',
                 '&:hover': {
-                  bgcolor: isLoading ? '#b91c1c' : '#1d4ed8'
+                  bgcolor: canCancelMessage ? '#b91c1c' : '#1d4ed8'
                 }
               }}
             >
-              {isLoading ? 'Cancel' : 'Send'}
+              {canCancelMessage ? 'Cancel' : 'Send'}
             </Button>
           </Stack>
         </Paper>

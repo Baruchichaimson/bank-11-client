@@ -16,7 +16,6 @@ const AUTH_EXEMPT_PATHS = [
   '/auth/forgot-password',
   '/auth/reset-password',
   '/auth/verify',
-  '/auth/verify-status',
   '/auth/logout'
 ];
 const PUBLIC_APP_PATHS = ['/login', '/register', '/verify', '/reset-password'];

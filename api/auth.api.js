@@ -14,8 +14,3 @@ export const forgotPassword = (payload) =>
 
 export const resetPassword = (payload) =>
   api.post('/auth/reset-password', payload);
-
-export const verifyStatus = (email) =>
-  api.get('/auth/verify-status', {
-    params: { email }
-  });

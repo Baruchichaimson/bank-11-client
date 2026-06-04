@@ -104,6 +104,8 @@ export default function Transfer() {
         return;
       }
 
+      setConfirmHighAmountOpen(false);
+
       if (!err.response) {
         setError('Cannot reach server right now. Please try again in a few seconds.');
         return;

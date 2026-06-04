@@ -2,6 +2,7 @@ import { useMemo } from 'react';
 import { Box, Button, Container, Paper, Stack, Typography } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import OpenInNewIcon from '@mui/icons-material/OpenInNew';
+import { jwtDecode } from 'jwt-decode';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext.jsx';
 
@@ -10,15 +11,7 @@ const JITSI_BASE_URL = 'https://meet.jit.si';
 const extractEmailFromJwt = (jwt) => {
   if (!jwt) return '';
   try {
-    const payload = jwt.split('.')[1];
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const decoded = decodeURIComponent(
-      atob(normalized)
-        .split('')
-        .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
-        .join('')
-    );
-    return (JSON.parse(decoded)?.email || '').toLowerCase();
+    return (jwtDecode(jwt)?.email || '').toLowerCase();
   } catch {
     return '';
   }

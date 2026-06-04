@@ -61,12 +61,8 @@ export default function Dashboard() {
   const handleAssistantAction = useCallback((action) => {
     if (action === 'open_video_call') {
       openVideoCallPopup();
-      return;
     }
-    if (action === 'open_money_transfer') {
-      navigate('/transfer');
-    }
-  }, [navigate]);
+  }, []);
 
   useEffect(() => {
     if (!token) return;
@@ -82,15 +78,7 @@ export default function Dashboard() {
   const getUserEmail = (jwt) => {
     if (!jwt) return null;
     try {
-      const payload = jwt.split('.')[1];
-      const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-      const decoded = decodeURIComponent(
-        atob(normalized)
-          .split('')
-          .map((char) => `%${char.charCodeAt(0).toString(16).padStart(2, '0')}`)
-          .join('')
-      );
-      return JSON.parse(decoded)?.email || null;
+      return jwtDecode(jwt)?.email || null;
     } catch {
       return null;
     }
