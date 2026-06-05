@@ -1,27 +1,50 @@
 import { io } from 'socket.io-client';
 
-const DEFAULT_API_BASE_URL = 'http://localhost:3000/api/v1';
+const DEFAULT_API_BASE_URL = 'http://localhost:3000';
 const DEFAULT_SOCKET_URL = 'http://localhost:3000';
 
-const getApiBaseUrl = () =>
-  import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL;
+export const SOCKET_TRANSPORTS = Object.freeze(['polling', 'websocket']);
 
-const deriveSocketUrlFromApiBase = (apiBaseUrl) => {
+const getViteEnv = () => import.meta.env || {};
+
+export const normalizeSocketUrl = (value, fallback = DEFAULT_SOCKET_URL) => {
+  const text = String(value || '').trim();
+  if (!text) return fallback;
+
   try {
-    const url = new URL(apiBaseUrl);
+    const url = new URL(text);
     return `${url.protocol}//${url.host}`;
   } catch {
-    return DEFAULT_SOCKET_URL;
+    return fallback;
   }
 };
 
-export const getSocketUrl = () =>
-  import.meta.env.VITE_SOCKET_URL || deriveSocketUrlFromApiBase(getApiBaseUrl());
+const getApiBaseUrl = () => {
+  const env = getViteEnv();
+  if (env.VITE_API_BASE_URL) return env.VITE_API_BASE_URL;
+  if (env.DEV) return DEFAULT_API_BASE_URL;
+  if (typeof window !== 'undefined' && window.location?.origin) {
+    return window.location.origin;
+  }
+  return DEFAULT_API_BASE_URL;
+};
+
+const deriveSocketUrlFromApiBase = (apiBaseUrl) => {
+  return normalizeSocketUrl(apiBaseUrl, DEFAULT_SOCKET_URL);
+};
+
+export const getSocketUrl = () => {
+  const env = getViteEnv();
+  return normalizeSocketUrl(
+    env.VITE_SOCKET_URL,
+    deriveSocketUrlFromApiBase(getApiBaseUrl())
+  );
+};
 
 const createAuthedSocket = ({ token }) =>
   io(getSocketUrl(), {
     autoConnect: true,
-    transports: ['websocket', 'polling'],
+    transports: SOCKET_TRANSPORTS,
     withCredentials: true,
     auth: token ? { token } : {}
   });

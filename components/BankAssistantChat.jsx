@@ -13,6 +13,7 @@ import { alpha, useTheme } from '@mui/material/styles';
 import ChatBubbleOutlineIcon from '@mui/icons-material/ChatBubbleOutline';
 import CloseIcon from '@mui/icons-material/Close';
 import { createAssistantSocket } from '../api/socket.js';
+import { SOCKET_EVENTS } from '../api/socketEvents.js';
 
 const isActiveTransferPhase = (phase) => Boolean(phase && phase !== 'idle');
 
@@ -61,7 +62,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       setIsLoading(false);
     });
 
-    socket.on('bot_reply', (payload) => {
+    socket.on(SOCKET_EVENTS.BOT_REPLY, (payload) => {
       const replyRequestId = String(payload?.requestId || '');
       if (activeRequestIdRef.current && replyRequestId && activeRequestIdRef.current !== replyRequestId) {
         return;
@@ -141,7 +142,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       setTransferSubmitting(false);
     });
 
-    socket.on('chat_error', (payload) => {
+    socket.on(SOCKET_EVENTS.CHAT_ERROR, (payload) => {
       const errorRequestId = String(payload?.requestId || '');
       if (activeRequestIdRef.current && errorRequestId && activeRequestIdRef.current !== errorRequestId) {
         return;
@@ -211,13 +212,13 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     requestCounterRef.current += 1;
     const requestId = String(requestCounterRef.current);
     activeRequestIdRef.current = requestId;
-    socketRef.current.emit('chat_message', { requestId, message: text });
+    socketRef.current.emit(SOCKET_EVENTS.CHAT_MESSAGE, { requestId, message: text });
   };
 
   const cancelMessage = () => {
     const requestId = activeRequestIdRef.current;
     if (!requestId || !socketRef.current) return;
-    socketRef.current.emit('cancel_chat_message', { requestId });
+    socketRef.current.emit(SOCKET_EVENTS.CANCEL_CHAT_MESSAGE, { requestId });
     activeRequestIdRef.current = null;
     setIsLoading(false);
   };
@@ -264,7 +265,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     const requestId = String(requestCounterRef.current);
     activeRequestIdRef.current = requestId;
     setIsLoading(true);
-    socketRef.current.emit('chat_message', {
+    socketRef.current.emit(SOCKET_EVENTS.CHAT_MESSAGE, {
       requestId,
       message: transferMessage,
       transferPayload: {
@@ -290,7 +291,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     const requestId = String(requestCounterRef.current);
     activeRequestIdRef.current = requestId;
     setIsLoading(true);
-    socketRef.current.emit('chat_message', {
+    socketRef.current.emit(SOCKET_EVENTS.CHAT_MESSAGE, {
       requestId,
       message: transferFormLanguage === 'he' ? 'בטל' : 'cancel',
       transferPayload: {
@@ -310,7 +311,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
     requestCounterRef.current += 1;
     const requestId = String(requestCounterRef.current);
     activeRequestIdRef.current = requestId;
-    socketRef.current.emit('chat_message', {
+    socketRef.current.emit(SOCKET_EVENTS.CHAT_MESSAGE, {
       requestId,
       message: text,
       transferPayload: {
