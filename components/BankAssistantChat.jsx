@@ -42,11 +42,13 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
   const [highAmountConfirmOpen, setHighAmountConfirmOpen] = useState(false);
   const [highAmountConfirmMessage, setHighAmountConfirmMessage] = useState('');
   const [highAmountConfirmLanguage, setHighAmountConfirmLanguage] = useState('en');
+  const [transferConfirmationMode, setTransferConfirmationMode] = useState('high_amount');
   const [activeTransferPhase, setActiveTransferPhase] = useState('idle');
   const socketRef = useRef(null);
   const listRef = useRef(null);
   const requestCounterRef = useRef(0);
   const activeRequestIdRef = useRef(null);
+  const transferSubmittingRef = useRef(false);
   const onAssistantActionRef = useRef(onAssistantAction);
 
   useEffect(() => {
@@ -89,6 +91,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
         onTransferSuccess().catch(() => {});
         setTransferFormOpen(false);
         setHighAmountConfirmOpen(false);
+        setTransferConfirmationMode('high_amount');
         setActiveTransferPhase('idle');
         setTransferFormError('');
         setTransferForm({
@@ -117,8 +120,19 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       if (actionType === 'transfer_high_amount_confirm') {
         setTransferFormOpen(false);
         setHighAmountConfirmOpen(true);
+        setTransferConfirmationMode('high_amount');
         setActiveTransferPhase('await_confirmation');
-        setHighAmountConfirmMessage(String(payload?.action?.message || ''));
+        setHighAmountConfirmMessage(String(payload?.action?.message || messageText || ''));
+        if (payload?.action?.language === 'he' || payload?.action?.language === 'en') {
+          setHighAmountConfirmLanguage(payload.action.language);
+        }
+      }
+      if (actionType === 'transfer_confirm') {
+        setTransferFormOpen(false);
+        setHighAmountConfirmOpen(true);
+        setTransferConfirmationMode('summary');
+        setActiveTransferPhase('await_confirmation');
+        setHighAmountConfirmMessage(String(payload?.action?.message || messageText || ''));
         if (payload?.action?.language === 'he' || payload?.action?.language === 'en') {
           setHighAmountConfirmLanguage(payload.action.language);
         }
@@ -126,6 +140,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       if (actionType === 'reset_transfer_form') {
         setTransferFormOpen(false);
         setHighAmountConfirmOpen(false);
+        setTransferConfirmationMode('high_amount');
         setActiveTransferPhase('idle');
         setTransferFormError('');
         setTransferForm({
@@ -138,6 +153,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
         onAssistantActionRef.current(actionType || payload.action);
       }
       activeRequestIdRef.current = null;
+      transferSubmittingRef.current = false;
       setIsLoading(false);
       setTransferSubmitting(false);
     });
@@ -149,6 +165,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       }
       setError(payload?.message || 'Chat error.');
       activeRequestIdRef.current = null;
+      transferSubmittingRef.current = false;
       setIsLoading(false);
       setTransferSubmitting(false);
     });
@@ -224,6 +241,8 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
   };
 
   const submitInlineTransfer = async () => {
+    if (transferSubmittingRef.current || isLoading) return;
+
     const receiverEmail = String(transferForm.receiverEmail || '').trim().toLowerCase();
     const amount = Number(transferForm.amount);
     const description = String(transferForm.description || '').trim();
@@ -254,6 +273,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
       return;
     }
 
+    transferSubmittingRef.current = true;
     setTransferFormError('');
     setTransferSubmitting(true);
 
@@ -488,7 +508,7 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
                     size="small"
                     variant="contained"
                     onClick={submitInlineTransfer}
-                    disabled={transferSubmitting}
+                    disabled={transferSubmitting || isLoading}
                   >
                     {transferSubmitting ? 'Sending…' : 'Send transfer'}
                   </Button>
@@ -509,7 +529,9 @@ export default function BankAssistantChat({ token, onAssistantAction, onTransfer
             >
               <Stack spacing={1}>
                 <Typography variant="subtitle2" sx={{ fontWeight: 700 }}>
-                  {highAmountConfirmLanguage === 'he' ? 'אישור נוסף להעברה' : 'Additional transfer confirmation'}
+                  {transferConfirmationMode === 'summary'
+                    ? (highAmountConfirmLanguage === 'he' ? 'אישור העברה' : 'Confirm transfer')
+                    : (highAmountConfirmLanguage === 'he' ? 'אישור נוסף להעברה' : 'Additional transfer confirmation')}
                 </Typography>
                 <Typography variant="body2">
                   {highAmountConfirmMessage}

@@ -24,6 +24,7 @@ import VideoCallIcon from '@mui/icons-material/VideoCall';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { getSentTransactionByRecipientName, getTransactions } from '../api/transactions.api.js';
+import { getMyAvatar } from '../api/users.api.js';
 import { useAuth } from '../context/AuthContext.jsx';
 import BankAssistantChat from '../components/BankAssistantChat.jsx';
 import { getOrCreateCallSocket } from '../api/socket.js';
@@ -49,6 +50,7 @@ export default function Dashboard() {
   const [callLoading, setCallLoading] = useState(false);
   const [outgoingCall, setOutgoingCall] = useState(null);
   const [callNotice, setCallNotice] = useState('');
+  const [avatarUrl, setAvatarUrl] = useState('');
   const historyRequestIdRef = useRef(0);
 
   const openVideoCallPopup = () => {
@@ -74,6 +76,33 @@ export default function Dashboard() {
       console.error('Invalid token', err);
     }
   }, [token]);
+
+  useEffect(() => {
+    if (!account) {
+      setAvatarUrl('');
+      return undefined;
+    }
+
+    let active = true;
+
+    const loadAvatar = async () => {
+      try {
+        const res = await getMyAvatar();
+        if (!active) return;
+        setAvatarUrl(res.data?.avatarUrl || '');
+      } catch (err) {
+        if (!active) return;
+        console.error('Failed to load avatar', err);
+        setAvatarUrl('');
+      }
+    };
+
+    loadAvatar();
+
+    return () => {
+      active = false;
+    };
+  }, [account]);
 
   const getUserEmail = (jwt) => {
     if (!jwt) return null;
@@ -262,6 +291,23 @@ export default function Dashboard() {
               Here is your financial overview for today.
             </Typography>
           </Box>
+
+          {avatarUrl ? (
+            <Box
+              component="img"
+              src={avatarUrl}
+              alt="User avatar"
+              sx={{
+                width: { xs: 92, md: 112 },
+                height: { xs: 92, md: 112 },
+                borderRadius: '50%',
+                objectFit: 'cover',
+                border: '3px solid rgba(255,255,255,0.85)',
+                boxShadow: '0 12px 30px rgba(15, 23, 42, 0.18)',
+                alignSelf: { xs: 'flex-start', md: 'center' }
+              }}
+            />
+          ) : null}
 
           <Stack direction="row" spacing={1.5}>
             <Button
